@@ -1,0 +1,80 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=76"]
+
+[project]
+name = "raw-data"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10,<3.11"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+]
+dependencies = [
+  "aiohttp==3.11.18",
+  "fastapi==0.115.12",
+  "requests==2.32.3",
+  "uvicorn>=0.34.2",
+  "opentelemetry-api==1.33.1",
+  "opentelemetry-sdk==1.33.1",
+  "opentelemetry-exporter-otlp-proto-grpc==1.33.1",
+  "opentelemetry-instrumentation-fastapi==0.54b1",
+  "opentelemetry-instrumentation-logging==0.54b1",
+  "opentelemetry-instrumentation-aiohttp-client==0.54b1",
+  "ujson==5.10.0",
+  "beanie>=2.0.0",
+  "pymongo>=4.14.1",
+  "motor>=3.7.1",
+  "dotenv>=0.9.9",
+  "pyyaml>=6.0.2",
+  "prefect>=3.4.16",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+
+[tool.ruff.lint]
+select = [
+  # Import sorting rules
+  "I",
+  # Pycodestyle rules (E, V)
+  "E",
+  # Tidy import rules
+  "TID",
+  # Perflint
+  "PERF",
+  # FastAPI specific rules
+  "FAST",
+]
+ignore = [
+  ### Intentionally disabled
+  # module level import not at top of file
+  "E402",
+  # line too long
+  "E501",
+  # do not assign a lambda expression, use a def
+  "E731",
+  # incorrect-dict-iterator, flags valid Series.items usage
+  "PERF102",
+  # try-except-in-loop, becomes useless in Python 3.11
+  "PERF203",
+]
+
+[tool.uv]
+concurrent-downloads = 10 # prevents uv from consuming all the CPU by concurrently downloading packages
+
+[tool.basedpyright]
+pythonVersion = "3.10"
+pythonPlatform = "Linux"
+typeCheckingMode = "recommended"
+reportUnusedVariable = "hint"
+reportUnusedImport = "hint"
+reportUnusedParameter = "hint"
+reportUnusedExpression = "hint"
+reportMissingTypeStubs = false
+autoImportCompletions = true
+reportAny = false
+reportExplicitAny = false
