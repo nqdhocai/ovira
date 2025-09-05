@@ -1,0 +1,4 @@
+database:
+  mongodb:
+    uri: "your_mongodb_uri_here"
+    db_name: "your_db_name_here"
