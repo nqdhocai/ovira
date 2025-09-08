@@ -1,42 +1,77 @@
+import asyncio
 from datetime import datetime
+
+from pydantic import BaseModel
 
 from clients import Clients
 from configs import get_logger
-from mongo.schemas import (
-    DeFiLlamaData,
-    DerivedData,
-    ProtocolsMetadata,
-    ProtocolSnapshot,
-)
-from utils import hasher
-from utils.timestamp import floor_to_hour
+from hooks.error import FailedExternalAPI, GenericServiceError
+from mongo.schemas import APYStatistics, PoolCharts, PoolsSnapshot, Predictions
 
-from .defillama_data import aggregate_defillama_data
-from .derived_data import compute_derived_data
-
-logger = get_logger("aggregate_data")
+defillama = Clients.get_service_client().get_defillama_client()
 mongo_client = Clients.get_mongo_client()
+logger = get_logger("defillama_stable_solana_pools")
 
 
-async def aggregate_protocol_snapshot_data():
-    # await mongo_client.initialize()
-    ts = floor_to_hour(int(datetime.utcnow().timestamp()))
+async def get_pool_charts_30d(pool_address: str) -> list[PoolCharts]:
+    url = f"https://yields.llama.fi/chart/{pool_address}"
+    try:
+        response = await defillama.async_get_request(url=url)
+        charts_data = response["data"]
+        pool_charts_30d = [
+            PoolCharts(
+                timestamp=item["timestamp"],
+                tvlUsd=item["tvlUsd"],
+                apy=item["apy"],
+            )
+            for item in charts_data[-30:]
+        ]
+        return pool_charts_30d
+    except (GenericServiceError, FailedExternalAPI) as e:
+        logger.error(f"Error fetching pool charts for {pool_address}: {e}")
+        return []
+    except Exception as e:
+        logger.error(f"Unexpected error fetching pool charts for {pool_address}: {e}")
+        return []
 
-    protocols_docs = await ProtocolsMetadata.find_all().to_list()
-    for protocol in protocols_docs:
-        defillama_data = await aggregate_defillama_data(
-            protocol_id=protocol.defillamaId, timestamp=ts
-        )
-        derived_data = await compute_derived_data(
-            defillama_data=defillama_data, ts_now=ts, protocol_id=protocol.defillamaId
-        )
-        protocol_snapshot: ProtocolSnapshot = ProtocolSnapshot(
-            id=hasher.get_hash(f"{protocol.defillamaId}:{ts}"),
-            protocol=protocol.slug,
-            chain="solana",
-            category=protocol.category,
-            timestamp=ts,
-            defillama=defillama_data,
-            derived=derived_data,
-        )
-        _ = await protocol_snapshot.save()
+
+async def aggregate_solana_stable_pools():
+    url = "https://yields.llama.fi/pools"
+    await mongo_client.initialize()
+    try:
+        response = await defillama.async_get_request(url=url)
+        pools = response["data"]
+        solana_pools = [pool for pool in pools if pool["chain"] == "Solana"]
+        stable_solana_pools = [
+            pool
+            for pool in solana_pools
+            if pool["stablecoin"] == True
+            and (pool["symbol"] == "USDT" or pool["symbol"] == "USDC")
+        ]
+        logger.info(f"Found {len(stable_solana_pools)} stable Solana pools.")
+        for pool in stable_solana_pools:
+            pool_charts_30d = await get_pool_charts_30d(pool["pool"])
+            pool_predictions = Predictions.model_validate(pool["predictions"])
+            pool_apy_statistics = APYStatistics(
+                mu=pool["mu"], sigma=pool["sigma"], count=pool["count"]
+            )
+            pool_snapshot = PoolsSnapshot(
+                chain=pool["chain"],
+                update_at=datetime.utcnow().isoformat(),
+                project=pool["project"],
+                symbol=pool["symbol"],
+                pool=pool["pool"],
+                predictions=pool_predictions,
+                apy_statistics=pool_apy_statistics,
+                pool_charts_30d=pool_charts_30d,
+            )
+            _ = await pool_snapshot.save()
+            logger.info(f"Saved snapshot for pool {pool['pool']}.")
+    except (GenericServiceError, FailedExternalAPI) as e:
+        logger.error(f"Error fetching pools data: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+
+
+if __name__ == "__main__":
+    asyncio.run(aggregate_solana_stable_pools())

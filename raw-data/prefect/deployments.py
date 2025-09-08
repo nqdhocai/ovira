@@ -49,7 +49,7 @@ async def deploy_flow():
             name="defi-data-pipeline",
             tags=["defi", "data", "defillama", "protocols"],
             description="Fetches data from DeFiLlama and aggregates protocol snapshots.",
-            schedule=CronSchedule(cron="0 * * * *"),  # Every hour
+            schedule=CronSchedule(cron="0 */3 * * *"),  # Every 3 hours
         )
         await aserve(defi_data_pipeline_deployment)
         print("Deployment created successfully.")
