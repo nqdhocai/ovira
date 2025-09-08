@@ -1,9 +1,11 @@
 import threading
+from typing import Any
 
 from beanie import init_beanie
 from config.settings import databases_config
-from models import ProtocolDoc  # Adjust the import based on your project structure
+from database.models import PoolSnapshot
 from pymongo import AsyncMongoClient
+from pymongo.asynchronous.database import AsyncDatabase
 
 
 class MongoDB:
@@ -17,36 +19,28 @@ class MongoDB:
                     cls._instance = super(MongoDB, cls).__new__(cls)
         return cls._instance
 
+    def __init__(self):
+        self.client: AsyncMongoClient[Any] = AsyncMongoClient(
+            databases_config.MONGO_DB_URI
+        )
+        self.db: AsyncDatabase[Any] = self.client[databases_config.MONGO_DB_NAME]
+
     async def init(self):
-        self.client = AsyncMongoClient(databases_config.MONGO_DB_URI)
-        self.db = self.client[databases_config.MONGO_DB_NAME]
-        await init_beanie(database=self.db, document_models=[ProtocolDoc])
+        await init_beanie(database=self.db, document_models=[PoolSnapshot])
 
-    async def get_all_latest_protocols(self) -> list[ProtocolDoc] | None:
-        pipeline = [
-            {"$sort": {"timestamp": -1}},  # Sort by timestamp descending
-            {
-                "$group": {
-                    "_id": "$protocol",
-                    "doc": {"$first": "$$ROOT"},
-                }
-            },
-            {"$replaceRoot": {"newRoot": "$doc"}},  # Replace root with the document
-        ]
-        results: list[ProtocolDoc] = (
-            await ProtocolDoc.find_many().aggregate(pipeline, ProtocolDoc).to_list()
-        )
-        return results if results else None
+    async def get_all_pools(self) -> list[PoolSnapshot]:
+        return await PoolSnapshot.find_all().to_list()
 
-    async def get_latest_protocol_by_name(
-        self, protocol_name: str
-    ) -> ProtocolDoc | None:
-        pipeline = [
-            {"$match": {"protocol": protocol_name}},  # Filter by protocol name
-            {"$sort": {"timestamp": -1}},  # Sort by timestamp descending
-            {"$limit": 1},  # Get the latest document
-        ]
-        result: list[ProtocolDoc] = (
-            await ProtocolDoc.find_many().aggregate(pipeline, ProtocolDoc).to_list()
-        )
-        return result[0] if result else None
+
+async def main():
+    mongo = MongoDB()
+    await mongo.init()
+    pools = await mongo.get_all_pools()
+    print(pools[0])
+    print(f"Total pools: {len(pools)}")
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(main())

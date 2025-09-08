@@ -1,3 +1,3 @@
-from databases import DatabaseConfig
+from config.databases import DatabaseConfig
 
 databases_config = DatabaseConfig()

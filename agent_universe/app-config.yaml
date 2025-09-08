@@ -1,4 +1,4 @@
-database:
+databases:
   mongodb:
     uri: "mongodb://131.153.202.197:27777/"
-    db_name: "protocol_snapshots_v1"
+    db_name: "defi_agent_db"

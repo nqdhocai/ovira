@@ -1,66 +1,138 @@
-from enum import Enum
+import bisect
+from datetime import datetime, timedelta, timezone
 
 from beanie import Document
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
-class Category(str, Enum):
-    DEX = "DEX"
-    Lending = "Lending"
-    LST = "LST"
-    Vault = "Vault"
-    Deriv = "Deriv"
+class Predictions(BaseModel):
+    predictedClass: str | None = None
+    predictedProbability: float | None = None
+    binnedConfidence: int | None = None
 
 
-class DefiLlamaData(BaseModel):
-    tvl_usd: float
-    dex_volume_24h_usd: float | None = 0.0
-    dex_volume_30d_usd: float | None = 0.0
-    fees_24h_usd: float | None = 0.0
-    stablecoins_chain: dict[str, float] | None = (
-        None  # {"usdc_mcap":..., "off_peg_pct":...}
-    )
+class ApyStatistics(BaseModel):
+    mu: float
+    sigma: float
+    count: int
 
 
-class Derived(BaseModel):
-    dTVL_24h: float
-    slope_tvl_30d: float
-    sigma_tvl_30d: float
-    slope_fees_7d: float | None = 0.0
-    vol_tvl_ratio_24h: float | None = 0.0
-    volume_24h_rank_pct: float | None = None
-    volume_30d_rank_pct: float | None = None
-    offpeg_inst: float | None = 0.0
-    is_stable_or_lst: bool = False
-    capacity_usd: float | None = 0.0
+class Chart(BaseModel):
+    timestamp: datetime
+    tvlUsd: float
+    apy: float
 
 
-class QC(BaseModel):
-    missing_points_count: int = 0
-    data_window_days: int = 30
-
-
-class ProtocolDoc(Document):
-    timestamp: int
+class PoolSnapshot(Document):
     chain: str
-    protocol: str
-    category: Category
-    defillama: DefiLlamaData
-    derived: Derived
-    qc: QC
+    project: str
+    symbol: str
+    pool: str
+    predictions: Predictions
+    apy_statistics: ApyStatistics
+    volumeUsd1d: float | None = None
+    volumeUsd7d: float | None = None
+    update_at: datetime
+    pool_charts_30d: list[Chart] | None
 
-    # Tự tính APR phí annualized khi cần (cho DEX)
-    def apr_fee_annualized(self) -> float:
-        fees = self.defillama.fees_24h_usd or 0.0
-        tvl = self.defillama.tvl_usd or 0.0
-        if tvl <= 0:
-            return 0.0
-        return (fees / tvl) * 365.0
+    apyPct1D: float | None = None
+    apyPct7D: float | None = None
+    apyPct30D: float | None = None
+    tvlUsd: float | None = None
 
-    def off_peg_pct_system(self) -> float:
-        if (
-            self.defillama.stablecoins_chain
-            and "off_peg_pct" in self.defillama.stablecoins_chain
-        ):
-            return float(self.defillama.stablecoins_chain["off_peg_pct"])
-        return 0.0
+    @model_validator(mode="after")
+    def compute_from_charts(
+        self,
+        now: datetime | None = None,
+        max_gap_hours: float = 12.0,
+        stats_window_days: int | None = None,  # None = all data
+        use_linear_interpolation: bool = False,
+    ) -> "PoolData":
+        """
+        - Calculate apyPct1D/7D/30D based on time points, robust to uneven sampling.
+        - Update tvlUsd at the latest point.
+        """
+        if not self.pool_charts_30d:
+            return self
+
+        charts_sorted = sorted(self.pool_charts_30d, key=lambda c: c.timestamp)
+        times = [
+            c.timestamp
+            if c.timestamp.tzinfo
+            else c.timestamp.replace(tzinfo=timezone.utc)
+            for c in charts_sorted
+        ]
+        apys = [c.apy for c in charts_sorted]
+        tvls = [c.tvlUsd for c in charts_sorted]
+
+        if now is None:
+            now = times[-1]
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+
+        self.tvlUsd = tvls[-1]  # TVL tại điểm cuối
+
+        # 2) Internal function: get value at target time (interpolate or nearest-left)
+        max_gap = timedelta(hours=max_gap_hours)
+
+        def value_at(target: datetime, series: list[float]) -> float | None:
+            """Trả về giá trị tại mốc 'target' bằng:
+            - Nội suy tuyến tính nếu có 2 điểm kẹp và khoảng cách không vượt max_gap;
+            - Nếu không, lấy giá trị 'bên trái gần nhất' nếu khoảng cách <= max_gap;
+            - Ngược lại, None.
+            """
+            idx = bisect.bisect_left(times, target)
+
+            # Case: exact timestamp match
+            if idx < len(times) and times[idx] == target:
+                return series[idx]
+
+            left_i = idx - 1
+            right_i = idx
+
+            left_ok = left_i >= 0
+            right_ok = right_i < len(times)
+
+            # Both sides bracket the target -> try interpolation
+            if use_linear_interpolation and left_ok and right_ok:
+                t0, t1 = times[left_i], times[right_i]
+                v0, v1 = series[left_i], series[right_i]
+                # Check gap on both sides
+                if (target - t0) <= max_gap and (t1 - target) <= max_gap:
+                    # linear interpolation in time
+                    span = (t1 - t0).total_seconds()
+                    if span > 0:
+                        alpha = (target - t0).total_seconds() / span
+                        return v0 + alpha * (v1 - v0)
+
+            # if cant interpolate, try nearest left
+            if left_ok and (target - times[left_i]) <= max_gap:
+                return series[left_i]
+
+            # Or right nearest (rarely used for past pct, but for completeness)
+            if right_ok and (times[right_i] - target) <= max_gap:
+                return series[right_i]
+
+            return None
+
+        def pct_change(old: float | None, new: float | None) -> float | None:
+            if old is None or new is None or old == 0:
+                return None
+            return (new - old) / old * 100.0
+
+        # 3) Calculate percentage change based on time points
+        latest_apy = apys[-1]
+        apy_1d_ago = value_at(now - timedelta(days=1), apys)
+        apy_7d_ago = value_at(now - timedelta(days=7), apys)
+        apy_30d_ago = value_at(now - timedelta(days=30), apys)
+
+        self.apyPct1D = pct_change(apy_1d_ago, latest_apy)
+        self.apyPct7D = pct_change(apy_7d_ago, latest_apy)
+        self.apyPct30D = pct_change(apy_30d_ago, latest_apy)
+
+        self.pool_charts_30d = []
+
+        return self
+
+    class Settings:
+        name: str = "pools_snapshot_v1"
