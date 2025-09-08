@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from pydantic import BaseModel
 
@@ -18,14 +18,20 @@ async def get_pool_charts_30d(pool_address: str) -> list[PoolCharts]:
     try:
         response = await defillama.async_get_request(url=url)
         charts_data = response["data"]
-        pool_charts_30d = [
-            PoolCharts(
-                timestamp=item["timestamp"],
-                tvlUsd=item["tvlUsd"],
-                apy=item["apy"],
-            )
-            for item in charts_data[-30:]
-        ]
+        # Filter data for the last 30 days
+        last_30d = datetime.now(timezone.utc) - timedelta(days=30)
+        pool_charts_30d: list[PoolCharts] = []
+        for item in charts_data:
+            # Parse ISO format datetime string
+            ts = datetime.fromisoformat(item["timestamp"].replace("Z", "+00:00"))
+            if ts >= last_30d:
+                pool_charts_30d.append(
+                    PoolCharts(
+                        timestamp=ts,
+                        tvlUsd=item["tvlUsd"],
+                        apy=item["apy"],
+                    )
+                )
         return pool_charts_30d
     except (GenericServiceError, FailedExternalAPI) as e:
         logger.error(f"Error fetching pool charts for {pool_address}: {e}")
