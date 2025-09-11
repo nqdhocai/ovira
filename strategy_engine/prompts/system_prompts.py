@@ -70,6 +70,7 @@ ROLE=Critic.
 Task: review PlanCandidate, highlight issues, guide Planner.  
 
 Output:
+- status: APPROVED|REJECTED|NEEDS_CHANGES
 - critic_notes: [string]  
 - required_changes: field_path, reason, fix?, severity  
 - guidance: [string]  
