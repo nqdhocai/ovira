@@ -33,11 +33,16 @@ class MongoDB:
 
 
 async def main():
+    import json
+
     mongo = MongoDB()
     await mongo.init()
     pools = await mongo.get_all_pools()
     print(pools[0])
     print(f"Total pools: {len(pools)}")
+
+    with open("pools.json", "w") as f:
+        json.dump([p.model_dump() for p in pools[:5]], f, default=str)
 
 
 if __name__ == "__main__":

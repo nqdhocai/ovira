@@ -1,4 +1,19 @@
 databases:
   mongodb:
-    uri: "your_mongodb_uri_here"
-    db_name: "your_db_name_here"
+    uri: your_mongodb_uri_here
+    db_name: your_mongodb_db_name_here
+
+mcp:
+  coral_protocol:
+    sse_url: http://localhost:5555/devmode/exampleApplication/privkey/session1/sse
+    timeout_ms: 60000
+
+agents:
+  llm_model:
+    provider: azure_openai
+    api_version: 2025-01-01-preview
+    base_url: https://openai-centic.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2023-03-15-preview
+    api_key: ${MODEL_API_KEY}
+    model_name: gpt-4o
+    temperature: 0.1
+    max_tokens: 16000
