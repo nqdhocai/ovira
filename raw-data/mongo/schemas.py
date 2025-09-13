@@ -26,11 +26,12 @@ class PoolCharts(BaseModel):
 
 
 class PoolsSnapshot(Document):
+    id: UUID
     chain: str
     update_at: datetime
     project: str
     symbol: str
-    pool: str
+    pool_name: str
     predictions: Predictions
     apy_statistics: APYStatistics
     pool_charts_30d: list[PoolCharts] | None
@@ -40,4 +41,19 @@ class PoolsSnapshot(Document):
         validate_on_save = True
 
 
-DocumentModels = [PoolsSnapshot]
+class PoolsMetdadata(Document):
+    id: UUID
+    defillama_id: str | None
+    url: str | None
+    project: str
+    name: str | None
+    symbol: str
+    chain: str
+    final_name: str
+
+    class Settings:
+        name = "pools_metadata"
+        validate_on_save = True
+
+
+DocumentModels = [PoolsSnapshot, PoolsMetdadata]

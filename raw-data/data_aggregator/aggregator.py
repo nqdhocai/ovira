@@ -6,7 +6,14 @@ from pydantic import BaseModel
 from clients import Clients
 from configs import get_logger
 from hooks.error import FailedExternalAPI, GenericServiceError
-from mongo.schemas import APYStatistics, PoolCharts, PoolsSnapshot, Predictions
+from mongo.schemas import (
+    APYStatistics,
+    PoolCharts,
+    PoolsMetdadata,
+    PoolsSnapshot,
+    Predictions,
+)
+from utils import hasher
 
 defillama = Clients.get_service_client().get_defillama_client()
 mongo_client = Clients.get_mongo_client()
@@ -61,12 +68,17 @@ async def aggregate_solana_stable_pools():
             pool_apy_statistics = APYStatistics(
                 mu=pool["mu"], sigma=pool["sigma"], count=pool["count"]
             )
+            update_time = datetime.utcnow().isoformat()
+            pool_metadata = await PoolsMetdadata.find_one(
+                PoolsMetdadata.defillama_id == pool["pool"]
+            )
             pool_snapshot = PoolsSnapshot(
+                id=hasher.get_hash(f"{pool['symbol']}-{pool['project']}-{update_time}"),
                 chain=pool["chain"],
-                update_at=datetime.utcnow().isoformat(),
+                update_at=update_time,
                 project=pool["project"],
                 symbol=pool["symbol"],
-                pool=pool["pool"],
+                pool_name=pool_metadata.final_name if pool_metadata else pool["pool"],
                 predictions=pool_predictions,
                 apy_statistics=pool_apy_statistics,
                 pool_charts_30d=pool_charts_30d,
