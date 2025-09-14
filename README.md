@@ -62,7 +62,7 @@ The project consists of two main components:
 
 3. **Configure Environment**
    ```bash
-   cd agent_universe
+   cd strategy_engine
    cp app-config-template.yaml app-config.yaml
    # Edit app-config.yaml with your settings
    ```
@@ -70,7 +70,15 @@ The project consists of two main components:
 4. **Run the Agent System**
    ```bash
    # Start agents and orchestrator
-   uv run -m agents.agents && uv run -m agents.orchestrator
+   cd strategy_engine
+   uv run -m agents.agents
+   uv run -m agents.orchestrator
+   ```
+
+5. **Run the API**
+   ```bash
+   cd strategy_engine
+   uv run -m api.api_main
    ```
 
 ## 📁 Project Structure
@@ -79,8 +87,9 @@ The project consists of two main components:
 ovira/
 ├── README.md                 # This file
 ├── start-server.sh          # Server startup script
-├── agent_universe/          # Python agent framework
+├── strategy_engine/          # Python agent framework
 │   ├── agents/             # Agent implementations
+|   ├── api/
 │   ├── config/             # Configuration modules
 │   ├── database/           # Data persistence layer
 │   ├── prompts/            # Agent prompts and templates
