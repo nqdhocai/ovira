@@ -11,7 +11,7 @@ from utils.singleton_base import SingletonBase
 class MongoDB(SingletonBase):
     def __init__(self):
         self.client: AsyncMongoClient[Any] = AsyncMongoClient(
-            databases_config.MONGO_DB_URI
+            databases_config.MONGO_DB_URI, uuidRepresentation="standard"
         )
         self.db: AsyncDatabase[Any] = self.client[databases_config.MONGO_DB_NAME]
 

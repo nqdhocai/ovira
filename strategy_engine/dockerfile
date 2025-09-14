@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1
+ARG PYTHON_VERSION=3.12
+FROM python:${PYTHON_VERSION}-bookworm as base
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Create a non-privileged user that the app will run under.
+# See https://docs.docker.com/go/dockerfile-user-best-practices/
+ARG UID=10001
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/home/appuser" \
+    --shell "/bin/bash" \
+    --uid "${UID}" \
+    appuser
+
+# Install uv.
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Install the application dependencies with enabled cache
+ENV UV_LINK_MODE=copy
+RUN --mount=type=cache,target=/root/.cache/uv  \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project
+
+# Copy the service code
+COPY . /app
+
+# Create and set ownership of app directory and user home
+RUN chown -R appuser:appuser /app /home/appuser
+
+# Switch to the non-privileged user to run the application.
+USER appuser
+
+# Set environment variable PYTHONPATH to include the src directory
+ENV PYTHONPATH="app:${PYTHONPATH}"
+# Add virtualenv to PATH
+ENV PATH="/app/.venv/bin:$PATH"
+
+EXPOSE 8000
+
+# Run the model service
+CMD ["uv", "run", "-m", "api.api_main"]
