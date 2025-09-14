@@ -1,4 +1,3 @@
-import threading
 from typing import Any
 
 from beanie import init_beanie
@@ -6,22 +5,13 @@ from config.settings import databases_config
 from database.models import PoolSnapshot
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
+from utils.singleton_base import SingletonBase
 
 
-class MongoDB:
-    _instance = None
-    _lock = threading.Lock()
-
-    def __new__(cls):
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = super(MongoDB, cls).__new__(cls)
-        return cls._instance
-
+class MongoDB(SingletonBase):
     def __init__(self):
         self.client: AsyncMongoClient[Any] = AsyncMongoClient(
-            databases_config.MONGO_DB_URI
+            databases_config.MONGO_DB_URI, uuidRepresentation="standard"
         )
         self.db: AsyncDatabase[Any] = self.client[databases_config.MONGO_DB_NAME]
 

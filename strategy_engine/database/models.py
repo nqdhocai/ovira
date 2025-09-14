@@ -1,8 +1,9 @@
 import bisect
 from datetime import datetime, timedelta, timezone
+from uuid import UUID
 
 from beanie import Document
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class Predictions(BaseModel):
@@ -24,14 +25,13 @@ class Chart(BaseModel):
 
 
 class PoolSnapshot(Document):
+    id: UUID = Field(alias="_id")
     chain: str
     project: str
     symbol: str
-    pool: str
+    pool_name: str
     predictions: Predictions
     apy_statistics: ApyStatistics
-    volumeUsd1d: float | None = None
-    volumeUsd7d: float | None = None
     update_at: datetime
     pool_charts_30d: list[Chart] | None
 
