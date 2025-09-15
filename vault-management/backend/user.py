@@ -25,7 +25,7 @@ class UserOperations:
             return new_user
 
     @staticmethod
-    async def get_user_balance(user_wallet: str, vault_name: str) -> float:
+    async def get_user_balance_nav(user_wallet: str, vault_name: str) -> float:
         user = await UserMetadata.find_one(UserMetadata.wallet_address == user_wallet)
         if not user:
             raise ResourceNotFound(f"User with wallet {user_wallet} not found.")
@@ -42,4 +42,28 @@ class UserOperations:
             .sort(-UserBalanceHistory.update_at)
             .first_or_none()
         )
-        return user_balance.balance if user_balance else 0.0
+        return (
+            user_balance.remaining_banlance + user_balance.earnings
+            if user_balance
+            else 0.0
+        )
+
+    @staticmethod
+    async def get_user_balance_earnings(user_wallet: str, vault_name: str) -> float:
+        user = await UserMetadata.find_one(UserMetadata.wallet_address == user_wallet)
+        if not user:
+            raise ResourceNotFound(f"User with wallet {user_wallet} not found.")
+        vault = await VaultsMetadata.find_one(VaultsMetadata.name == vault_name)
+        if not vault:
+            raise ResourceNotFound(f"Vault with name {vault_name} not found.")
+        user_balance = (
+            await UserBalanceHistory.find(
+                And(
+                    UserBalanceHistory.user.id == user.id,
+                    UserBalanceHistory.vault.id == vault.id,
+                )
+            )
+            .sort(-UserBalanceHistory.update_at)
+            .first_or_none()
+        )
+        return user_balance.earnings if user_balance else 0.0

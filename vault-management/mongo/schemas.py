@@ -151,11 +151,12 @@ class UserBalanceHistory(Document):
     id: UUID
     user: Link[UserMetadata]
     vault: Link[VaultsMetadata]
-    balance: float
+    remaining_banlance: float
+    earnings: float
     update_at: datetime
 
     class Settings:
-        name = "user_balances"
+        name = "users_balance_history"
         validate_on_save = True
 
 

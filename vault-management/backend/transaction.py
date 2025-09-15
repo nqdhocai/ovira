@@ -58,7 +58,10 @@ class TransactionOperations:
             id=hasher.get_hash(f"{user.id}-{vault.id}-{transaction_time}-deposit"),
             user=user,
             vault=vault,
-            balance=(user_balance.balance + amount) if user_balance else amount,
+            remaining_banlance=(
+                user_balance.remaining_banlance + amount if user_balance else amount
+            ),
+            earnings=user_balance.earnings if user_balance else 0.0,
             update_at=transaction_time,
         )
         _ = await new_user_balance.save()
@@ -116,7 +119,10 @@ class TransactionOperations:
             .sort(-UserBalanceHistory.update_at)
             .first_or_none()
         )
-        if not user_balance or user_balance.balance < amount:
+        if (
+            not user_balance
+            or user_balance.remaining_banlance + user_balance.earnings < amount
+        ):
             raise ResourceNotFound(
                 f"Insufficient balance for user {user_wallet} in vault {vault_name}."
             )
@@ -124,7 +130,10 @@ class TransactionOperations:
             id=hasher.get_hash(f"{user.id}-{vault.id}-{transaction_time}-withdraw"),
             user=user,
             vault=vault,
-            balance=user_balance.balance - amount,
+            remaining_banlance=user_balance.remaining_banlance
+            + user_balance.earnings
+            - amount,
+            earnings=max(0.0, user_balance.earnings - amount),
             update_at=transaction_time,
         )
         _ = await new_user_balance.save()

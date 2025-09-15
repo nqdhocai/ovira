@@ -27,17 +27,39 @@ async def create_user(user_wallet: str):
         raise HTTPException(status_code=500, detail=f"Failed to create user: {str(e)}")
 
 
-@router.get("/balance", response_model=float)
-async def get_user_balance(user_wallet: str, vault_name: str):
+@router.get("/balance/nav", response_model=float)
+async def get_user_balance_nav(user_wallet: str, vault_name: str):
     r"""
-    Get a user's balance for a given vault.
+    Get a user's balance NAV (Net Asset Value) for a given vault.
 
     - Query params: `user_wallet` (str), `vault_name` (str).
-    - Success: returns a float representing the user's balance in the vault.
+    - Success: returns a float representing the user's balance NAV in the vault.
     - Errors: 404 if the user or vault is not found, 500 on other failures.
     """
     try:
-        balance = await UserOperations.get_user_balance(user_wallet, vault_name)
+        balance = await UserOperations.get_user_balance_nav(user_wallet, vault_name)
+        return balance
+    except ResourceNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get user balance: {str(e)}"
+        )
+
+
+@router.get("/balance/earnings", response_model=float)
+async def get_user_balance_earnings(user_wallet: str, vault_name: str):
+    r"""
+    Get a user's balance earnings for a given vault.
+
+    - Query params: `user_wallet` (str), `vault_name` (str).
+    - Success: returns a float representing the user's balance earnings in the vault.
+    - Errors: 404 if the user or vault is not found, 500 on other failures.
+    """
+    try:
+        balance = await UserOperations.get_user_balance_earnings(
+            user_wallet, vault_name
+        )
         return balance
     except ResourceNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
