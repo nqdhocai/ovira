@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 
@@ -14,14 +15,15 @@ router = APIRouter(prefix="/vault", tags=["vault"])
 async def create_vault(
     vault_name: str,
     owner_wallet_address: str,
-    asset: str,
+    asset: Literal["USDT", "USDC"],
+    risk_label: Literal["conservative", "balanced", "aggressive"],
     update_frequency: float = 6.0,
     policy_prompt: str | None = None,
 ):
     r"""
     Create a new vault.
 
-    - Query/body params: `vault_name` (str), `owner_wallet_address` (str), `asset` (str).
+    - Query/body params: `vault_name` (str), `owner_wallet_address` (str), `asset` (str), `risk_label` (str).
     - Optional: `update_frequency` (float, hours, default 6.0), `policy_prompt` (str | None).
     - Success: returns `SuccessResponse` (200) when vault is created.
     - Errors: 500 on failure.
@@ -31,6 +33,7 @@ async def create_vault(
             vault_name,
             owner_wallet_address,
             asset,
+            risk_label,
             update_frequency,
             policy_prompt,
         )
@@ -184,11 +187,11 @@ async def get_strategy_updated_history(vault_name: str, days: int = 3):
 
 
 @router.get("/ai_reasoning_trace", response_model=list[ReasoningTrace])
-async def get_vault_reasoning_trace(vault_name: str, days: int = 3):
+async def get_vault_reasoning_trace(vault_name: str):
     r"""
     Retrieve the vault's strategy reasoning trace.
 
-    - Query params: `vault_name` (str), optional `days` (int, default 30).
+    - Query params: `vault_name` (str)
     - Success: returns a list of `ReasoningTrace` entries (role: str, content: str).
     - Errors: 404 if no history found, 500 on other failures.
     """

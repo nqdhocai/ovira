@@ -67,3 +67,29 @@ async def get_user_balance_earnings(user_wallet: str, vault_name: str):
         raise HTTPException(
             status_code=500, detail=f"Failed to get user balance: {str(e)}"
         )
+
+
+@router.post("/balance/update_earnings", response_model=SuccessResponse)
+async def update_user_balance_earnings(
+    user_wallet: str, vault_name: str, time_interval: float = 6.0
+):
+    r"""
+    Update a user's balance earnings for a given vault over a specified time interval.
+
+    - Query/body: `user_wallet` (str), `vault_name` (str), `time_interval` (float) in hours.
+    - Success: returns `SuccessResponse` (200) when earnings are updated successfully.
+    - Errors: 404 if the user or vault is not found, 500 on other failures.
+    """
+    try:
+        await UserOperations.update_user_balance_earnings(
+            user_wallet, vault_name, time_interval
+        )
+        return SuccessResponse(
+            status_code=200, message="User earnings updated successfully."
+        )
+    except ResourceNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update user earnings: {str(e)}"
+        )

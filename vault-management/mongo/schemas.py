@@ -96,6 +96,7 @@ class VaultsMetadata(Document):
     owner: Link[UserMetadata]
     asset: str  # e.g., 'USDT', 'USDC'
     created_at: datetime
+    risk_label: Literal["conservative", "balanced", "aggressive"]
     update_frequency: float  # in hours
     policy_prompt: str | None
 

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Literal
 
 from beanie.operators import GTE, LTE, And
 from pydantic import BaseModel
@@ -33,7 +34,8 @@ class VaultOperations:
     async def create_vault(
         vault_name: str,
         owner_wallet_address: str,
-        asset: str,
+        asset: Literal["USDT", "USDC"],
+        risk_label: Literal["conservative", "balanced", "aggressive"],
         update_frequency: float = 6.0,
         policy_prompt: str | None = None,
     ):
@@ -48,6 +50,7 @@ class VaultOperations:
             name=vault_name,
             owner=owner,
             asset=asset,
+            risk_label=risk_label,
             update_frequency=update_frequency,
             policy_prompt=policy_prompt,
             created_at=created_time,
