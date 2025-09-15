@@ -1,3 +1,5 @@
+from beanie.operators import And
+
 from configs import get_logger
 from hooks.error import ResourceNotFound
 from mongo.schemas import UserBalanceHistory, UserMetadata, VaultsMetadata
@@ -30,11 +32,14 @@ class UserOperations:
         vault = await VaultsMetadata.find_one(VaultsMetadata.name == vault_name)
         if not vault:
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
-        user_balance = await UserBalanceHistory.find_one(
-            And(
-                UserBalanceHistory.user == user.id,
-                UserBalanceHistory.vault == vault.id,
-            ),
-            sort=[("update_at", -1)],
+        user_balance = (
+            await UserBalanceHistory.find(
+                And(
+                    UserBalanceHistory.user.id == user.id,
+                    UserBalanceHistory.vault.id == vault.id,
+                )
+            )
+            .sort(-UserBalanceHistory.update_at)
+            .first_or_none()
         )
         return user_balance.balance if user_balance else 0.0

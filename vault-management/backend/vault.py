@@ -78,8 +78,10 @@ class VaultOperations:
         if not vault:
             logger.error(f"Vault {vault_name} not found.")
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
-        latest_strategy = await VaultsStrategy.find_one(
-            VaultsStrategy.vault == vault.id, sort=[("update_at", -1)]
+        latest_strategy = (
+            await VaultsStrategy.find(VaultsStrategy.vault.id == vault.id)
+            .sort(-VaultsStrategy.update_at)
+            .first_or_none()
         )
         if not latest_strategy:
             logger.warning(f"No strategy data found for vault {vault_name}.")
@@ -92,8 +94,10 @@ class VaultOperations:
         if not vault:
             logger.error(f"Vault {vault_name} not found.")
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
-        latest_history = await VaultsHistory.find_one(
-            VaultsHistory.vault == vault.id, sort=[("update_at", -1)]
+        latest_history = (
+            await VaultsHistory.find(VaultsHistory.vault.id == vault.id)
+            .sort(-VaultsHistory.update_at)
+            .first_or_none()
         )
         if not latest_history:
             logger.warning(f"No TVL data found for vault {vault_name}.")
@@ -113,7 +117,7 @@ class VaultOperations:
         strategies = (
             await VaultsStrategy.find(
                 And(
-                    VaultsStrategy.vault == vault.id,
+                    VaultsStrategy.vault.id == vault.id,
                     GTE(VaultsStrategy.update_at, start_time),
                     LTE(VaultsStrategy.update_at, end_time),
                 ),
@@ -142,7 +146,7 @@ class VaultOperations:
         histories = (
             await VaultsHistory.find(
                 And(
-                    VaultsHistory.vault == vault.id,
+                    VaultsHistory.vault.id == vault.id,
                     GTE(VaultsHistory.update_at, start_time),
                     LTE(VaultsHistory.update_at, end_time),
                 ),
@@ -164,8 +168,10 @@ class VaultOperations:
         if not vault:
             logger.error(f"Vault {vault_name} not found.")
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
-        latest_strategy = await VaultsStrategy.find_one(
-            VaultsStrategy.vault == vault.id, sort=[("update_at", -1)]
+        latest_strategy = (
+            await VaultsStrategy.find(VaultsStrategy.vault.id == vault.id)
+            .sort(-VaultsStrategy.update_at)
+            .first_or_none()
         )
         if not latest_strategy:
             logger.warning(f"No strategy data found for vault {vault_name}.")
@@ -186,7 +192,7 @@ class VaultOperations:
         updates = (
             await VaultsUpdated.find(
                 And(
-                    VaultsUpdated.vault == vault.id,
+                    VaultsUpdated.vault.id == vault.id,
                     GTE(VaultsUpdated.update_at, start_time),
                     LTE(VaultsUpdated.update_at, end_time),
                 ),

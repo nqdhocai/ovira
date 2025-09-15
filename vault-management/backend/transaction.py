@@ -28,9 +28,12 @@ class TransactionOperations:
         if not user:
             user = await UserOperations.create_user(user_wallet)
         transaction_time = datetime.utcnow().isoformat()
-        vault_history = await VaultsHistory.find_one(
-            VaultsHistory.vault == vault.id, sort=[("update_at", -1)]
+        vault_history = (
+            await VaultsHistory.find(VaultsHistory.vault.id == vault.id)
+            .sort(-VaultsHistory.update_at)
+            .first_or_none()
         )
+
         # Update Vault History
         new_vault_history = VaultsHistory(
             id=hasher.get_hash(f"{vault.id}-{transaction_time}-deposit"),
@@ -41,12 +44,15 @@ class TransactionOperations:
         _ = await new_vault_history.save()
 
         # Update User Balance
-        user_balance = await UserBalanceHistory.find_one(
-            And(
-                UserBalanceHistory.user == user.id,
-                UserBalanceHistory.vault == vault.id,
-            ),
-            sort=[("update_at", -1)],
+        user_balance = (
+            await UserBalanceHistory.find(
+                And(
+                    UserBalanceHistory.user.id == user.id,
+                    UserBalanceHistory.vault.id == vault.id,
+                )
+            )
+            .sort(-UserBalanceHistory.update_at)
+            .first_or_none()
         )
         new_user_balance = UserBalanceHistory(
             id=hasher.get_hash(f"{user.id}-{vault.id}-{transaction_time}-deposit"),
@@ -81,8 +87,10 @@ class TransactionOperations:
         if not user:
             raise ResourceNotFound(f"User with wallet {user_wallet} not found.")
         transaction_time = datetime.utcnow().isoformat()
-        vault_history = await VaultsHistory.find_one(
-            VaultsHistory.vault == vault.id, sort=[("update_at", -1)]
+        vault_history = (
+            await VaultsHistory.find(VaultsHistory.vault.id == vault.id)
+            .sort(-VaultsHistory.update_at)
+            .first_or_none()
         )
         if not vault_history or vault_history.tvl < amount:
             raise ResourceNotFound(
@@ -98,12 +106,15 @@ class TransactionOperations:
         _ = await new_vault_history.save()
 
         # Update User Balance
-        user_balance = await UserBalanceHistory.find_one(
-            And(
-                UserBalanceHistory.user == user.id,
-                UserBalanceHistory.vault == vault.id,
-            ),
-            sort=[("update_at", -1)],
+        user_balance = (
+            await UserBalanceHistory.find(
+                And(
+                    UserBalanceHistory.user.id == user.id,
+                    UserBalanceHistory.vault.id == vault.id,
+                )
+            )
+            .sort(-UserBalanceHistory.update_at)
+            .first_or_none()
         )
         if not user_balance or user_balance.balance < amount:
             raise ResourceNotFound(

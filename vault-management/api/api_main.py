@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Paper Vault API",
+    title="Vault Management API",
     description="API for managing and interacting with vaults.",
     lifespan=lifespan,
 )
