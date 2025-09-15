@@ -11,15 +11,12 @@ router = APIRouter(prefix="/user", tags=["user"])
 
 @router.post("/create_user", response_model=SuccessResponse)
 async def create_user(user_wallet: str):
-    r"""Create a new user.
+    r"""
+    Create a new user record.
 
-    Inputs:
-        user_wallet (str): The wallet address of the user to create.
-
-    Outputs:
-        On success, returns a `SuccessResponse` Pydantic model with status and
-        message. On failure, raises an HTTPException with status 500 and an
-        error message describing the failure.
+    - Query/body: `user_wallet` (str) — wallet address to register.
+    - Success: returns `SuccessResponse` (200) on successful creation.
+    - Errors: 404 if related resources are missing, 500 on server errors.
     """
     try:
         _ = await UserOperations.create_user(user_wallet)
@@ -32,16 +29,12 @@ async def create_user(user_wallet: str):
 
 @router.get("/balance", response_model=float)
 async def get_user_balance(user_wallet: str, vault_name: str):
-    r"""Get the balance of a user in a specific vault.
+    r"""
+    Get a user's balance for a given vault.
 
-    Inputs:
-        user_wallet (str): The wallet address of the user.
-        vault_name (str): The name of the vault.
-
-    Outputs:
-        On success, returns the balance of the user in the specified vault.
-        On failure, raises an HTTPException with status 404 and an error message
-        describing the failure.
+    - Query params: `user_wallet` (str), `vault_name` (str).
+    - Success: returns a float representing the user's balance in the vault.
+    - Errors: 404 if the user or vault is not found, 500 on other failures.
     """
     try:
         balance = await UserOperations.get_user_balance(user_wallet, vault_name)

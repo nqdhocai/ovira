@@ -12,16 +12,16 @@ router = APIRouter(prefix="/strategy", tags=["strategy"])
 
 @router.post("/update_vault_strategy", response_model=SuccessResponse)
 async def update_vault_strategy(strategy: StrategyInfo, vault_name: str):
-    r"""Update vault strategy.
+    r"""
+    Update a vault's strategy.
 
-    Inputs:
-        strategy (StrategyInfo): Representing the vault strategy.
-        vault_name (str): The name of the vault to update.
+    - Request body: `strategy` (mongo.schemas.StrategyInfo) — the new strategy payload.
+    - Query/path: `vault_name` (str) — vault identifier to update.
 
-    Outputs:
-        On success, returns a `SuccessResponse` Pydantic model with status and
-        message. On failure, raises an HTTPException with status 500 and an
-        error message describing the failure.
+    Responses:
+    - 200: `SuccessResponse` when the strategy is updated successfully.
+    - 404: when the referenced resource is not found.
+    - 500: on unexpected server errors.
     """
     try:
         strategy_ops = StrategyOperations(strategy, vault_name)
