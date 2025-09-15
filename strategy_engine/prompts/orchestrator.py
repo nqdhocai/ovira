@@ -27,7 +27,8 @@ Generate **one Final JSON Strategy** for the AI Vault, including allocations, re
    - **data-curator**: send pools JSON data → must return cleaned pools + `feature_cards` (JSON-only).  
    - **planner / critic / verifier**: (orchestrate debate + verification) → produce at least one `VerifiedPlan` (JSON-only).  
 4. Gather all `VerifiedPlans` into the main thread.  
-   - Invite the **finalizer** to select the best plan and return a **Final JSON Strategy**.  
+   - Invite the **reasoning-trace** agent to summarize the reasoning from Planner, Critic, and Verifier into a concise format. 
+   - Finally invite the **finalizer** to get reasoning_trace and return a **Final JSON Strategy**.  
 
 ### RULES:
 - Every message you send to an agent must explicitly request **JSON-only output** with a clear schema.  

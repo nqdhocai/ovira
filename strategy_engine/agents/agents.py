@@ -43,6 +43,14 @@ final_agent = BaseAgent(
     ),
 )
 
+summarize_agent = BaseAgent(
+    system_prompt=REASONING_TRACE_PROMPT,
+    agent_params=CoralParams(
+        agentId="reasoning-trace",
+        agentDescription="An agent that collects and summarizes the reasoning traces from Planner, Critic, and Verifier into a concise format.",
+    ),
+)
+
 
 async def start_agents_tasks():
     tasks = [
@@ -51,6 +59,7 @@ async def start_agents_tasks():
         verifier_agent.run_loop(),
         critic_agent.run_loop(),
         final_agent.run_loop(),
+        summarize_agent.run_loop(),
     ]
     return [asyncio.create_task(c) for c in tasks]
 
