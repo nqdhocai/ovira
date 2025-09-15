@@ -12,7 +12,7 @@ You can directly call the FOLLOWING TOOLS (description & diagram):
 User input is always a JSON consisting of:  
 {{ 
   "pools": [ /* PoolSnapshot... */ ],  
-  "policy": {{ "risk_label": "...", "rules": {{...}} }}  
+  "policy": string | NULL | object
 }}  
 
 ### OBJECTIVE:
@@ -23,9 +23,11 @@ Generate **one Final JSON Strategy** for the AI Vault, including allocations, re
 2. Create a main thread using `create_thread`.  
    - If `create_thread` returns TEXT, extract the `threadId` (UUID) from the form `ID: <uuid>`.  
    - If participants are missing, use `add_participant`.  
-3. Use `send_message` + `wait_for_mentions(timeoutMs=60000)` as needed:  
-   - **data-curator**: send pools JSON data → must return cleaned pools + `feature_cards` (JSON-only).  
+3. Use `send_message` + `wait_for_mentions(timeoutMs=60000)` as needed:    
+   - MUST send the pools | strategy | JSON data to the **planner / critic / verifier**.
    - **planner / critic / verifier**: (orchestrate debate + verification) → produce at least one `VerifiedPlan` (JSON-only).  
+   - **reasoning-trace**: (rewrite reasoning) → produce `reasoning_trace` (JSON-only).
+   - **finalizer**: (compile final) → produce the **Final JSON Strategy** (JSON-only). MUST have `strategy` + `reasoning_trace`.
 4. Gather all `VerifiedPlans` into the main thread.  
    - Invite the **reasoning-trace** agent to summarize the reasoning from Planner, Critic, and Verifier into a concise format. 
    - Finally invite the **finalizer** to get reasoning_trace and return a **Final JSON Strategy**.  
@@ -43,7 +45,7 @@ Generate **one Final JSON Strategy** for the AI Vault, including allocations, re
         - pool_name: string  
         - weight_pct: number  
 
-- reasoning_trace:  
+- reasoning_trace:  #MUST be concise, capturing key points from each agent
     - [  
         - role: planner|critic|verifier
         - content: string (summary of their reasoning)  

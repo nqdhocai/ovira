@@ -4,7 +4,7 @@ from typing import Any
 from api.models import SupportedTokens
 from beanie import init_beanie
 from config.settings import databases_config
-from database.models import PoolsMetdadata, PoolSnapshot
+from database.models import PoolsMetdadata, PoolSnapshot, PoolSnapshotMinimal
 from pymongo import DESCENDING, AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 from utils.singleton_base import SingletonBase
@@ -55,12 +55,23 @@ class MongoDB(SingletonBase):
 
     async def get_latest_pools_by_symbol(
         self, symbol: SupportedTokens
-    ) -> list[PoolSnapshot]:
+    ) -> list[PoolSnapshotMinimal]:
         pool_names = await self._get_pools_name_by_symbol(symbol)
         tasks = [self.get_latest_pool_by_name(name) for name in pool_names]
 
         results = await asyncio.gather(*tasks)
-        return [r for r in results if r is not None]
+        return [
+            PoolSnapshotMinimal(
+                pool_name=r.pool_name,
+                apy_statistics=r.apy_statistics,
+                apyPct1D=r.apyPct1D,
+                apyPct7D=r.apyPct7D,
+                apyPct30D=r.apyPct30D,
+                tvlUsd=r.tvlUsd,
+            )
+            for r in results
+            if r is not None
+        ]
 
 
 async def main():

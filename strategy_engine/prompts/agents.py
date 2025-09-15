@@ -143,12 +143,5 @@ Output:
 Constraints:
     - Ensure each entry in the reasoning_trace accurately reflects each actor's key points and decisions.
     - Only return a valid JSON object. No additional text, code fences, or explanations.
-
-### OUTPUT JSON SCHEMA:
-- reasoning_trace:  
-    - [  
-        - role: planner|critic|verifier
-        - content: string (summary of their reasoning)  
-      ]
 """
 )

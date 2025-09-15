@@ -3,13 +3,13 @@ import asyncio
 from agents.base_agent import BaseAgent, CoralParams
 from prompts.agents import *
 
-data_curator = BaseAgent(
-    system_prompt=DATA_CURATOR_PROMPT,
-    agent_params=CoralParams(
-        agentId="data-curator",
-        agentDescription="Data Curator Agent responsible for receiving raw pool data (JSON format) and converting them into cleaned feature_cards",
-    ),
-)
+# data_curator = BaseAgent(
+#     system_prompt=DATA_CURATOR_PROMPT,
+#     agent_params=CoralParams(
+#         agentId="data-curator",
+#         agentDescription="Data Curator Agent responsible for receiving raw pool data (JSON format) and converting them into cleaned feature_cards",
+#     ),
+# )
 
 planner_agent = BaseAgent(
     system_prompt=PLANNER_PROMPT,
@@ -54,7 +54,7 @@ summarize_agent = BaseAgent(
 
 async def start_agents_tasks():
     tasks = [
-        data_curator.run_loop(),
+        # data_curator.run_loop(),
         planner_agent.run_loop(),
         verifier_agent.run_loop(),
         critic_agent.run_loop(),

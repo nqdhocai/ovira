@@ -39,6 +39,15 @@ class Chart(BaseModel):
     apy: float
 
 
+class PoolSnapshotMinimal(BaseModel):
+    pool_name: str
+    apy_statistics: ApyStatistics
+    apyPct1D: float | None = None
+    apyPct7D: float | None = None
+    apyPct30D: float | None = None
+    tvlUsd: float | None = None
+
+
 class PoolSnapshot(Document):
     id: UUID = Field(alias="_id")
     # chain: str

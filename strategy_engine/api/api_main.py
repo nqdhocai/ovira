@@ -58,7 +58,7 @@ async def mongo_test():
         raise HTTPException(status_code=500, detail="MongoDB connection failed")
 
 
-@app.get("/vaults/rebalance", response_model=FinalStrategy)
+@app.get("/vault/rebalance", response_model=FinalStrategy)
 async def get_vault_data(
     token: SupportedTokens, risk_label: RiskLabel, policy: str | None = None
 ) -> FinalStrategy:
