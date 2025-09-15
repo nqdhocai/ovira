@@ -16,7 +16,7 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.tools import StructuredTool
 from langchain_core.prompts import MessagesPlaceholder
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from prompts.orchestrator_prompt import ORCHESTRATOR_SYSTEM_PROMPT
+from prompts.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
 from pydantic import BaseModel, Field
 from utils.helpers import extract_json_blocks
 from utils.singleton_base import SingletonBase
@@ -155,7 +155,6 @@ class ResultProcessor:
             with open("final_strategy.json", "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception:
-            # Theo kiến trúc no-log: bỏ qua im lặng
             pass
 
 

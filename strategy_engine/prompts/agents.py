@@ -34,8 +34,8 @@ ROLE=Data Curator.
 Task: from `pools` → feature_cards + data_quality_flags.
 
 Output:
-- feature_cards: pool_id, chain, project, symbol, tvl_usd, mu, sigma, apy_pct_7d/30d, predicted_class, predicted_probability, confidence_bin.  
-- data_quality_flags: pool_id, flag (MISSING_FIELD|OUTLIER|SUSPICIOUS|ZERO_TVL|OTHER), detail.  
+- feature_cards: pool_name, chain, project, symbol, tvl_usd, mu, sigma, apy_pct_7d/30d, predicted_class, predicted_probability, confidence_bin.  
+- data_quality_flags: pool_name, flag (MISSING_FIELD|OUTLIER|SUSPICIOUS|ZERO_TVL|OTHER), detail.  
 
 Constraints: include all pools. If none valid → empty + flag.  
 """
@@ -51,7 +51,7 @@ Update with Critic feedback.
 
 Output:
 - rationale: string  
-- allocations: pool_id, weight_pct, notes  
+- allocations: pool_name, weight_pct, notes  
 - totals: weight_pct_sum  
 
 Constraints:  
@@ -104,17 +104,27 @@ Constraints:
 FINAL_PROMPT = (
     COMMON_LOOP
     + """
-ROLE=Final Agent.  
-Task: collect VerifiedPlans, pick best strategy.
+ROLE = Finalizer Agent  
+
+Task: Aggregate the validated outputs from Planner, Verifier, and Critic, normalize allocations if needed, and produce a single JSON object that contains the final strategy and reasoning trace.
 
 Output:
-- strategy: risk_label, allocations(pool_id, weight_pct)  
-- reasons: [string]  
-- critic_notes: [string]  
+- strategy:  
+    - risk_label: conservative|balanced|aggressive
+    - allocations:  
+        - pool_name: string  
+        - weight_pct: number  
 
-Constraints:  
-- weight sum =100 (±1e-6). If not, normalize + note.  
-- Only from verified=true pools.  
-- If none valid: allocations=[], explain in reasons.  
+- reasoning_trace:  
+    - [  
+        - role: planner|critic|verifier
+        - content: string (summary of their reasoning)  
+      ]
+
+Constraints:
+- The sum of all weight_pct must equal 100 (±1e-6). If not, normalize and add a note in reasoning_trace.
+- Include only pools with verified=true.
+- If no valid pools are available: set allocations = [] and explain why in reasoning_trace.
+- Return only one valid JSON object. No extra text, code fences, or explanations.
 """
 )

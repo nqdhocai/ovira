@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any, Literal
 
 from agents.models import FinalStrategyResponse
@@ -17,3 +18,8 @@ class GlobalStrategyRequest(BaseModel):
 
 class StrategyResponse(APIResponse):
     strategy: FinalStrategyResponse | None = None
+
+
+class SupportedTokens(str, Enum):
+    USDC = "USDC"
+    USDT = "USDT"
