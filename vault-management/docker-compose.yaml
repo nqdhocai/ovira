@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  paper-vault:
+  vault-management:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: paper-vault
+    container_name: vault-management
     restart: always
     ports:
       - "8000:8000"

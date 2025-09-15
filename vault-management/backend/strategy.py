@@ -1,11 +1,10 @@
 from datetime import datetime
 from typing import Any
 
-from llm.gemini import get_strategy_changes
-
 from clients import Clients
 from configs import get_logger
 from hooks.error import ResourceNotFound
+from llm.strategy_updated import get_strategy_changes
 from mongo.schemas import (
     PoolAllocation,
     PoolsSnapshot,
