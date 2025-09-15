@@ -27,8 +27,8 @@ async def create_user(user_wallet: str):
         raise HTTPException(status_code=500, detail=f"Failed to create user: {str(e)}")
 
 
-@router.get("/balance/nav", response_model=float)
-async def get_user_balance_nav(user_wallet: str, vault_name: str):
+@router.get("/balance/net_value", response_model=float)
+async def get_user_balance_net_value(user_wallet: str, vault_name: str):
     r"""
     Get a user's balance NAV (Net Asset Value) for a given vault.
 

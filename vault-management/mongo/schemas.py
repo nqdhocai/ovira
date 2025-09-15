@@ -60,6 +60,11 @@ class PoolAllocation(BaseModel):
     weight_pct: float
 
 
+class ReasoningTrace(BaseModel):
+    role: str
+    content: str
+
+
 class Strategy(BaseModel):
     risk_label: str
     allocations: list[PoolAllocation]
@@ -67,8 +72,7 @@ class Strategy(BaseModel):
 
 class StrategyInfo(BaseModel):
     strategy: Strategy
-    reasons: list[str]
-    critic_notes: list[str]
+    reasoning_trace: list[ReasoningTrace]
 
 
 class UpdatedInfo(BaseModel):

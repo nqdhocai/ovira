@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from backend.vault import VaultOperations, VaultStrategyUpdatedInfo
 from hooks.error import ResourceNotFound
 from hooks.success import SuccessResponse
-from mongo.schemas import PoolAllocation
+from mongo.schemas import PoolAllocation, ReasoningTrace
 
 router = APIRouter(prefix="/vault", tags=["vault"])
 
@@ -164,8 +164,8 @@ async def get_vault_allocations(vault_name: str):
         )
 
 
-@router.get("/strategy_updated_history", response_model=list[VaultStrategyUpdatedInfo])
-async def get_strategy_updated_history(vault_name: str, days: int = 30):
+@router.get("/recent_action", response_model=list[VaultStrategyUpdatedInfo])
+async def get_strategy_updated_history(vault_name: str, days: int = 3):
     r"""
     Retrieve the vault's strategy update history.
 
@@ -181,3 +181,33 @@ async def get_strategy_updated_history(vault_name: str, days: int = 30):
         raise HTTPException(
             status_code=500, detail=f"Failed to get strategy updated history: {str(e)}"
         )
+
+
+@router.get("/ai_reasoning_trace", response_model=list[ReasoningTrace])
+async def get_vault_reasoning_trace(vault_name: str, days: int = 3):
+    r"""
+    Retrieve the vault's strategy reasoning trace.
+
+    - Query params: `vault_name` (str), optional `days` (int, default 30).
+    - Success: returns a list of `ReasoningTrace` entries (role: str, content: str).
+    - Errors: 404 if no history found, 500 on other failures.
+    """
+    try:
+        return await VaultOperations.get_strategy_ai_reasoning_trace(
+            vault_name=vault_name
+        )
+    except ResourceNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get strategy AI reasoning trace: {str(e)}",
+        )
+
+
+@router.get("/existing_vaults", response_model=list[str])
+async def get_existing_vaults():
+    r"""
+    Get list of existing vault. Return list[str] is list of vaults's name
+    """
+    return await VaultOperations.get_existing_vaults()

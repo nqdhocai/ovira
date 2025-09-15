@@ -54,14 +54,18 @@ class TransactionOperations:
             .sort(-UserBalanceHistory.update_at)
             .first_or_none()
         )
+        remaining_balance = amount
+        earnings = 0.0
+        if user_balance:
+            remaining_balance += user_balance.remaining_banlance
+            earnings = user_balance.earnings
+        print(f"{remaining_balance}, {earnings}")
         new_user_balance = UserBalanceHistory(
             id=hasher.get_hash(f"{user.id}-{vault.id}-{transaction_time}-deposit"),
             user=user,
             vault=vault,
-            remaining_banlance=(
-                user_balance.remaining_banlance + amount if user_balance else amount
-            ),
-            earnings=user_balance.earnings if user_balance else 0.0,
+            remaining_banlance=remaining_balance,
+            earnings=earnings,
             update_at=transaction_time,
         )
         _ = await new_user_balance.save()

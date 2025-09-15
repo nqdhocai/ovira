@@ -7,6 +7,7 @@ from configs import get_logger
 from hooks.error import ResourceNotFound
 from mongo.schemas import (
     PoolAllocation,
+    ReasoningTrace,
     UpdatedInfo,
     UserMetadata,
     VaultsHistory,
@@ -214,3 +215,23 @@ class VaultOperations:
             for update in updates
         ]
         return update_info
+
+    @staticmethod
+    async def get_existing_vaults() -> list[str]:
+        vaults = await VaultsMetadata.find().to_list()
+        return [vault.name for vault in vaults]
+
+    @staticmethod
+    async def get_strategy_ai_reasoning_trace(vault_name: str) -> list[ReasoningTrace]:
+        vault = await VaultsMetadata.find_one(VaultsMetadata.name == vault_name)
+        if not vault:
+            raise ResourceNotFound(f"Vault with name {vault_name} not found.")
+        strategy = (
+            await VaultsStrategy.find(VaultsStrategy.vault.id == vault.id)
+            .sort(-VaultsStrategy.update_at)
+            .first_or_none()
+        )
+        if not strategy:
+            logger.warning(f"No strategy data found for vault {vault_name}.")
+            return []
+        return strategy.strategy.reasoning_trace
