@@ -1,14 +1,17 @@
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 
 from backend.strategy import StrategyOperations
 from hooks.error import ResourceNotFound
 from hooks.success import SuccessResponse
+from mongo.schemas import StrategyInfo
 
 router = APIRouter(prefix="/strategy", tags=["strategy"])
 
 
 @router.post("/update_vault_strategy", response_model=SuccessResponse)
-async def update_vault_strategy(strategy: dict, vault_name: str):
+async def update_vault_strategy(strategy: dict[str, Any], vault_name: str):
     r"""Update vault strategy.
 
     Inputs:
@@ -21,7 +24,9 @@ async def update_vault_strategy(strategy: dict, vault_name: str):
         error message describing the failure.
     """
     try:
-        strategy_ops = StrategyOperations(strategy, vault_name)
+        strategy_ops = StrategyOperations(
+            StrategyInfo.model_validate(strategy), vault_name
+        )
         await strategy_ops.upload_vault_data()
         return SuccessResponse(
             status_code=200, message="Vault strategy updated successfully."

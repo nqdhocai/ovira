@@ -16,7 +16,17 @@ def get_strategy_changes(
     new_strategy: VaultsStrategy, last_strategy: VaultsStrategy
 ) -> UpdatedInfo:
     prompt = f"""
-    You are a concise formatter that compares two DeFi strategies and emits recent actions for a UI table.
+    You are a precise differ that compares TWO DeFi strategies and emits recent actions for a UI table.
+
+    SCHEMA OF EACH INPUT
+    {
+        "strategy": {
+            "risk_label": "balanced|conservative|aggressive|...",
+            "allocations": [{"pool_name": "string", "weight_pct": "float number" }]
+        },
+        "reasons": [ "string", ... ],
+        "critic_notes": [ "string", ... ]
+    }
 
     INPUT
     last_strategy:
@@ -26,42 +36,47 @@ def get_strategy_changes(
     {new_strategy.model_dump()}
 
     TASK
-    Compare the two strategies and output ONLY the differences as a JSON object with this exact shape:
+    Return ONLY a JSON object with this exact shape:
     {
-        "action": "Rebalance"|"Add Pool"|"Remove Pool"|"Risk Profile Change"|"Audit Update"|"No Changes",
-        "details": "string (Note: max 20 words)"
+        "actions": [
+        {
+            "action": "Rebalance"|"Add Pool"|"Remove Pool"|"Risk Profile Change"|"Rationale Update"|"No Changes",
+            "details": "string"
+        }
+    ]
     }
-    
-    
 
     RULES
-    1) Consider allocations as maps pool_id -> weight_pct.
+    1) Build allocation maps by pool_name (trim spaces; compare case-insensitively).
     2) Added pools (in new but not in last):
-    - For each, emit: {
-        "action": "Add Pool", "details": "+<INT %> to <pool_id or pool_name>" }.
+    Emit one item per pool:
+    {"action": "Add Pool", "details": "+<INT%> to <pool_name>" }.
     3) Removed pools (in last but not in new):
-    - For each, emit: {
-        "action": "Remove Pool", "details": "-<INT %> from <pool_id or pool_name>" }.
-    4) Changed weights (pool appears in both):
-    - delta = new.weight_pct - last.weight_pct.
-    - Ignore float noise if |delta| < 0.01.
-    - Emit ONE "Rebalance" action summarizing the top changes (max 3 clauses), comma-separated, ordered by |delta| desc.
-        • Positive delta: "+X% to <label>"
-        • Negative delta: "-X% from <label>"
-        • If >3 changes, append ", and N more".
-    5) Risk label changed (strategy.risk_label):
-    - Emit: {"action": "Risk Profile Change", "details": "<old> → <new>" }.
-    6) Audit changes (audit.summary or audit.rules_verification text differs):
-    - Emit: {"action": "Audit Update", "details": "policy/audit text updated" }.
-    7) If nothing changed at all:
-    - Emit exactly one item: {"action": "No Changes", "details": "Strategy unchanged" }.
-    8) Style for details:
-    - Use trader-style, crisp phrases (e.g., "+5% to USDC Kamino", "-10% from CLMM").
-    - Round percentages to nearest integer; always include the '%' sign.
-    - Do NOT invent pools; if you don’t know a friendly name, use the pool_id from input.
-    9) Output MUST be valid JSON. Do NOT include code fences, explanations, or extra keys. Return ONLY the JSON object.
+    Emit one item per pool:
+    {"action": "Remove Pool", "details": "-<INT%> from <pool_name>" }.
+    4) Weight changes for common pools:
+    delta = new.weight_pct - last.weight_pct. Ignore if |delta| < 0.01.
+    Emit ONE "Rebalance" item summarizing the biggest changes (max 3 clauses), comma-separated, ordered by |delta| desc:
+    • Positive: "+X% to <pool_name>"
+    • Negative: "-X% from <pool_name>"
+    If >3 changes, append ", and N more".
+    Round X to nearest integer and include the % sign.
+    5) Risk label change:
+    If strategy.risk_label differs → {
+        "action": "Risk Profile Change", "details": "<old> → <new>" }.
+    6) Reasons / critic_notes change:
+    If the concatenated texts differ after lowercasing & collapsing whitespace, emit:
+    {"action": "Rationale Update", "details": "rationale/notes updated" }.
+    Keep it short; do NOT invent content.
+    7) If there are no differences at all:
+    Emit exactly one item: {"action": "No Changes", "details": "Strategy unchanged" }.
+    8) Style:
+    - Use the pool_name from input; never invent names.
+    - Keep details crisp, trader-style (e.g., "+5% to ABCD-test").
+    9) Output MUST be valid JSON. Do NOT include code fences, explanations, markdown, or extra keys.
 
-    NOW PRODUCE THE JSON.
+    NOW RETURN THE JSON ONLY.
+
     """
     response = model.generate_content(prompt=prompt)
     return UpdatedInfo.model_validate(response.json())

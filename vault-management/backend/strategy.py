@@ -7,6 +7,7 @@ from clients import Clients
 from configs import get_logger
 from hooks.error import ResourceNotFound
 from mongo.schemas import (
+    PoolAllocation,
     PoolsSnapshot,
     StrategyInfo,
     VaultsMetadata,
@@ -20,17 +21,15 @@ mongo_client = Clients.get_mongo_client()
 
 
 class StrategyOperations:
-    def __init__(self, strategy_dict: dict[Any], vault_name: str):
+    async def __init__(self, strategy_info: StrategyInfo, vault_name: str):
         self.vault: VaultsMetadata | None = await VaultsMetadata.find_one(
             VaultsMetadata.name == vault_name
         )
         if not self.vault:
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
-        self.strategy_response: StrategyInfo = StrategyInfo.model_validate(
-            strategy_dict
-        )
+        self.strategy_response: StrategyInfo = strategy_info
 
-    async def get_chosen_pool_apy(self, pool_name) -> float:
+    async def get_chosen_pool_apy(self, pool_name: str) -> float:
         pool = await PoolsSnapshot.find_one(
             PoolsSnapshot.pool_name == pool_name, sort=[("update_at", -1)]
         )
@@ -51,7 +50,7 @@ class StrategyOperations:
         for allocation in self.strategy_response.strategy.allocations:
             try:
                 pool_apy = await self.get_chosen_pool_apy(allocation.pool_name)
-                pools_allocation.append((pool_apy, allocation.weight / 100))
+                pools_allocation.append((pool_apy, allocation.weight_pct / 100))
             except ResourceNotFound as e:
                 logger.error(f"Error getting APY for pool {allocation.pool_name}: {e}")
                 raise ResourceNotFound(

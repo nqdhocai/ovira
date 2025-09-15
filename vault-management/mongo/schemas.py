@@ -60,11 +60,6 @@ class PoolAllocation(BaseModel):
     weight_pct: float
 
 
-class AuditInfo(BaseModel):
-    summary: str
-    rules_verification: str
-
-
 class Strategy(BaseModel):
     risk_label: str
     allocations: list[PoolAllocation]
@@ -72,7 +67,8 @@ class Strategy(BaseModel):
 
 class StrategyInfo(BaseModel):
     strategy: Strategy
-    audit: AuditInfo
+    reasons: list[str]
+    critic_notes: list[str]
 
 
 class UpdatedInfo(BaseModel):
