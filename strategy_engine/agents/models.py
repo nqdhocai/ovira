@@ -20,7 +20,7 @@ class Strategy(BaseModel):
     allocations: list[AllocationItem]
 
 
-class FinalStrategyResponse(BaseModel):
+class FinalStrategy(BaseModel):
     strategy: Strategy
     reasoning_trace: list[ConversationSummary]
 

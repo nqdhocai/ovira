@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from agents.models import FinalStrategyResponse
+from agents.models import FinalStrategy
 from agents.orchestrator import OrchestratorAgent
 from api.models import SupportedTokens
 from database.mongodb import MongoDB
@@ -15,7 +15,7 @@ async def rebalance_strategy(
     token: SupportedTokens,
     policy: str | dict[str, Any] | None = None,
     risk: RiskLabel = RiskLabel.BALANCED,
-) -> FinalStrategyResponse:
+) -> FinalStrategy:
     mongo = MongoDB()
     orchestrator = OrchestratorAgent()
     await orchestrator.initialize()

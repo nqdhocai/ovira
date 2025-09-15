@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 # App-specific deps
 from agents.model import get_llm_model
-from agents.models import FinalStrategyResponse
+from agents.models import FinalStrategy
 from config.settings import mcp_config
 from dotenv import load_dotenv
 from langchain.agents import AgentExecutor, create_tool_calling_agent
@@ -143,12 +143,12 @@ class PolicyBuilder:
 # Result handling
 # =========================
 class ResultProcessor:
-    def process_result(self, result: dict[str, Any]) -> FinalStrategyResponse:
+    def process_result(self, result: dict[str, Any]) -> FinalStrategy:
         output = result.get("output", "")
         parsed = extract_json_blocks(output)[0]
         formatted = json.dumps(parsed, ensure_ascii=False)
         self._save_to_file(parsed)
-        return FinalStrategyResponse.model_validate_json(formatted)
+        return FinalStrategy.model_validate_json(formatted)
 
     def _save_to_file(self, data: dict[str, Any]) -> None:
         try:
@@ -222,7 +222,7 @@ class OrchestratorAgent(SingletonBase):
         pools_data: list[dict[Any, Any]],
         policy: dict[str, Any] | str | None = None,
         risk: Literal["conservative", "balanced", "aggressive"] = "balanced",
-    ) -> FinalStrategyResponse:
+    ) -> FinalStrategy:
         if not self.executor:
             raise RuntimeError("Agent not initialized. Call initialize() first.")
         user_input = self._prepare_user_input(pools_data, policy, risk)
@@ -253,7 +253,7 @@ async def generate_strategy(
     pools_data: list[dict[Any, Any]],
     policy: dict[str, Any] | str | None = None,
     risk: Literal["conservative", "balanced", "aggressive"] = "balanced",
-) -> FinalStrategyResponse:
+) -> FinalStrategy:
     orchestrator = OrchestratorAgent()
     await orchestrator.initialize()
     return await orchestrator.execute_strategy(pools_data, policy, risk)

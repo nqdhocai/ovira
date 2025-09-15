@@ -3,9 +3,11 @@ import logging
 from contextlib import asynccontextmanager
 
 from agents.agents import start_agents_tasks
-from api.models import StrategyResponse, SupportedTokens
+from agents.models import FinalStrategy
+from api.errors import BadAIResponse
+from api.models import SupportedTokens
 from database.mongodb import MongoDB
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from utils.models import RiskLabel
 
 API_PREFIX = "/api/v1"
@@ -53,21 +55,21 @@ async def mongo_test():
     except Exception as e:
         logger.error(f"Error in mongo_test: {e}")
 
-        return {"status": "error", "error": str(e)}
+        raise HTTPException(status_code=500, detail="MongoDB connection failed")
 
 
-@app.get("/vaults/rebalance")
+@app.get("/vaults/rebalance", response_model=FinalStrategy)
 async def get_vault_data(
     token: SupportedTokens, risk_label: RiskLabel, policy: str | None = None
-) -> StrategyResponse:
+) -> FinalStrategy:
     from api.rebalance_strategy import rebalance_strategy
 
     try:
-        result = await rebalance_strategy(policy=policy, risk=risk_label, token=token)
-        return StrategyResponse(status="success", error=None, strategy=result)
+        return await rebalance_strategy(policy=policy, risk=risk_label, token=token)
+
     except Exception as e:
         logger.error(f"Error in rebalance_strategy: {e}")
-        return StrategyResponse(status="error", error=str(e), strategy=None)
+        raise BadAIResponse(detail=str(e))
 
 
 if __name__ == "__main__":

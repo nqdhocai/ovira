@@ -20,7 +20,7 @@ Generate **one Final JSON Strategy** for the AI Vault, including allocations, re
 
 ### MANDATORY STEPS:
 1. Call `list_agents` to retrieve all connected agents and their descriptions.  
-2. Create a main thread (e.g., `"ai_vault_main"`) using `create_thread`.  
+2. Create a main thread using `create_thread`.  
    - If `create_thread` returns TEXT, extract the `threadId` (UUID) from the form `ID: <uuid>`.  
    - If participants are missing, use `add_participant`.  
 3. Use `send_message` + `wait_for_mentions(timeoutMs=60000)` as needed:  
