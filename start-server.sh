@@ -7,4 +7,4 @@ set -e
 cd coral-server
 
 # Set config path and run gradlew
-CONFIG_PATH="../" ./gradlew run
+CONFIG_PATH="../" ./gradlew run --args="--sse-server 24145"

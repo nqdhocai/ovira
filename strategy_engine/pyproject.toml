@@ -6,7 +6,8 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "beanie>=2.0.0",
-    "langchain>=0.3.27",
+    "fastapi>=0.116.1",
+    "langchain[mistralai]>=0.3.27",
     "langchain-google-genai>=2.1.10",
     "langchain-mcp-adapters>=0.1.9",
     "langchain-openai>=0.3.33",

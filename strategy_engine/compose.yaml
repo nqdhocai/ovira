@@ -1,0 +1,13 @@
+services:
+  strategy-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms:
+        - "linux/amd64"
+        - "linux/arm64"
+    image: ovira/strategy-engine:latest
+    # NOTE: Temporarily expose port
+    ports:
+      - 8000:8000
+    restart: unless-stopped
