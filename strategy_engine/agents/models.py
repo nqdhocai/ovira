@@ -1,10 +1,18 @@
+from enum import Enum
+from typing import Literal
+
 from pydantic import BaseModel
 from utils.models import RiskLabel
 
 
 class AllocationItem(BaseModel):
-    pool_id: str
+    pool_name: str
     weight_pct: float
+
+
+class ConversationSummary(BaseModel):
+    role: Literal["planner", "critic", "verifier"]
+    content: str
 
 
 class Strategy(BaseModel):
@@ -12,7 +20,11 @@ class Strategy(BaseModel):
     allocations: list[AllocationItem]
 
 
-class FinalStrategyResponse(BaseModel):
+class FinalStrategy(BaseModel):
     strategy: Strategy
-    reasons: list[str]
-    critic_notes: list[str]
+    reasoning_trace: list[ConversationSummary]
+
+
+class SupportedTokens(Enum):
+    USDT = "USDT"
+    USDC = "USDC"

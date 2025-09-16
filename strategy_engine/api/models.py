@@ -1,6 +1,6 @@
+from enum import Enum
 from typing import Any, Literal
 
-from agents.models import FinalStrategyResponse
 from pydantic import BaseModel
 from utils.models import RiskLabel
 
@@ -15,5 +15,6 @@ class GlobalStrategyRequest(BaseModel):
     policy: str | dict[str, Any] | None = None
 
 
-class StrategyResponse(APIResponse):
-    strategy: FinalStrategyResponse | None = None
+class SupportedTokens(str, Enum):
+    USDC = "USDC"
+    USDT = "USDT"

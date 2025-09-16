@@ -1,8 +1,9 @@
 import logging
 from typing import Any
 
-from agents.models import FinalStrategyResponse
+from agents.models import FinalStrategy
 from agents.orchestrator import OrchestratorAgent
+from api.models import SupportedTokens
 from database.mongodb import MongoDB
 from utils.models import RiskLabel
 
@@ -11,13 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 async def rebalance_strategy(
-    policy: str | dict[str, Any] | None = None, risk: RiskLabel = RiskLabel.BALANCED
-) -> FinalStrategyResponse:
+    token: SupportedTokens,
+    policy: str | dict[str, Any] | None = None,
+    risk: RiskLabel = RiskLabel.BALANCED,
+) -> FinalStrategy:
     mongo = MongoDB()
     orchestrator = OrchestratorAgent()
     await orchestrator.initialize()
 
-    pools = await mongo.get_all_pools()
+    pools = await mongo.get_latest_pools_by_symbol(token)
 
     logger.info(
         f"Fetched {len(pools)} pools from MongoDB | example: {pools[0] if pools else 'No pools found'}"

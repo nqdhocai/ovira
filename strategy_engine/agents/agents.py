@@ -1,15 +1,15 @@
 import asyncio
 
 from agents.base_agent import BaseAgent, CoralParams
-from prompts.system_prompts import *
+from prompts.agents import *
 
-data_curator = BaseAgent(
-    system_prompt=DATA_CURATOR_PROMPT,
-    agent_params=CoralParams(
-        agentId="data-curator",
-        agentDescription="Data Curator Agent responsible for receiving raw pool data (JSON format) and converting them into cleaned feature_cards",
-    ),
-)
+# data_curator = BaseAgent(
+#     system_prompt=DATA_CURATOR_PROMPT,
+#     agent_params=CoralParams(
+#         agentId="data-curator",
+#         agentDescription="Data Curator Agent responsible for receiving raw pool data (JSON format) and converting them into cleaned feature_cards",
+#     ),
+# )
 
 planner_agent = BaseAgent(
     system_prompt=PLANNER_PROMPT,
@@ -39,22 +39,30 @@ final_agent = BaseAgent(
     system_prompt=FINAL_PROMPT,
     agent_params=CoralParams(
         agentId="finalizer",
-        agentDescription="Finalizer Agent that synthesizes discussion information from Critic + Planner + Verifier and returns final json format of strategy",
+        agentDescription="The Finalizer Agent aggregates all information, summarizes the discussion from Critic, Planner, and Verifier, and returns the final JSON containing both the strategy and the conversation summary.",
+    ),
+)
+
+summarize_agent = BaseAgent(
+    system_prompt=REASONING_TRACE_PROMPT,
+    agent_params=CoralParams(
+        agentId="reasoning-trace",
+        agentDescription="An agent that collects and summarizes the reasoning traces from Planner, Critic, and Verifier into a concise format.",
     ),
 )
 
 
-async def main():
+async def start_agents_tasks():
     tasks = [
-        data_curator.run_loop(),
+        # data_curator.run_loop(),
         planner_agent.run_loop(),
         verifier_agent.run_loop(),
         critic_agent.run_loop(),
         final_agent.run_loop(),
+        summarize_agent.run_loop(),
     ]
+    return [asyncio.create_task(c) for c in tasks]
 
-    _ = await asyncio.gather(*tasks)
 
-
-if __name__ == "__main__":
-    asyncio.run(main())
+# if __name__ == "__main__":
+#     asyncio.run(start_agents())

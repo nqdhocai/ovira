@@ -6,6 +6,21 @@ from beanie import Document
 from pydantic import BaseModel, Field, model_validator
 
 
+class PoolsMetdadata(Document):
+    id: UUID
+    defillama_id: str | None
+    url: str | None
+    project: str
+    name: str | None
+    symbol: str
+    chain: str
+    final_name: str
+
+    class Settings:
+        name = "pools_metadata"
+        validate_on_save = True
+
+
 class Predictions(BaseModel):
     predictedClass: str | None = None
     predictedProbability: float | None = None
@@ -24,10 +39,19 @@ class Chart(BaseModel):
     apy: float
 
 
+class PoolSnapshotMinimal(BaseModel):
+    pool_name: str
+    apy_statistics: ApyStatistics
+    apyPct1D: float | None = None
+    apyPct7D: float | None = None
+    apyPct30D: float | None = None
+    tvlUsd: float | None = None
+
+
 class PoolSnapshot(Document):
     id: UUID = Field(alias="_id")
-    chain: str
-    project: str
+    # chain: str
+    # project: str
     symbol: str
     pool_name: str
     predictions: Predictions
@@ -70,16 +94,16 @@ class PoolSnapshot(Document):
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
 
-        self.tvlUsd = tvls[-1]  # TVL tại điểm cuối
+        self.tvlUsd = tvls[-1]
 
         # 2) Internal function: get value at target time (interpolate or nearest-left)
         max_gap = timedelta(hours=max_gap_hours)
 
         def value_at(target: datetime, series: list[float]) -> float | None:
-            """Trả về giá trị tại mốc 'target' bằng:
-            - Nội suy tuyến tính nếu có 2 điểm kẹp và khoảng cách không vượt max_gap;
-            - Nếu không, lấy giá trị 'bên trái gần nhất' nếu khoảng cách <= max_gap;
-            - Ngược lại, None.
+            """Return value at 'target' timestamp by:
+            - Linear interpolation if bracketed by 2 points and distance doesn't exceed max_gap;
+            - Otherwise, use 'nearest left' value if distance <= max_gap;
+            - Otherwise, None.
             """
             idx = bisect.bisect_left(times, target)
 
@@ -130,7 +154,7 @@ class PoolSnapshot(Document):
         self.apyPct7D = pct_change(apy_7d_ago, latest_apy)
         self.apyPct30D = pct_change(apy_30d_ago, latest_apy)
 
-        self.pool_charts_30d = []
+        self.pool_charts_30d = None  # free memory
 
         return self
 
