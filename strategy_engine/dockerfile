@@ -42,7 +42,7 @@ ENV PYTHONPATH="app:${PYTHONPATH}"
 # Add virtualenv to PATH
 ENV PATH="/app/.venv/bin:$PATH"
 
-EXPOSE 24142:8000
+EXPOSE 24141:8000
 
 # Run the model service
 CMD ["uv", "run", "-m", "api.api_main"]
