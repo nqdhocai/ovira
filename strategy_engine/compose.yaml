@@ -17,4 +17,4 @@ services:
 networks:
   strategy-provider-app:
     name: strategy-provider-app-net
-    external: True
+    driver: bridge
