@@ -23,6 +23,14 @@ from .user import UserOperations
 logger = get_logger("vault_operations")
 
 
+def get_current_target_time() -> datetime:
+    now = datetime.utcnow()
+    now = now.replace(minute=0, second=0, microsecond=0)
+    if now.hour % 6 != 0:
+        now = now - timedelta(hours=now.hour % 6)
+    return now
+
+
 class VaultStrategyUpdatedInfo(BaseModel):
     timestamp: datetime
     action: str
@@ -117,7 +125,7 @@ class VaultOperations:
             logger.error(f"Vault {vault_name} not found.")
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
         end_time = datetime.utcnow()
-        start_time = end_time - timedelta(days=days)
+        start_time = end_time - timedelta(days=days + 1)
         strategies = (
             await VaultsStrategy.find(
                 And(
@@ -134,7 +142,21 @@ class VaultOperations:
                 f"No strategy data found for vault {vault_name} in the last {days} days."
             )
             return []
-        apy_chart = [(strategy.update_at, strategy.apy) for strategy in strategies]
+        end_time = get_current_target_time()
+        start_time = end_time - timedelta(days=days)
+        apy_chart: list[tuple[datetime, float]] = []
+        while start_time <= end_time:
+            strategy = next(
+                (
+                    s
+                    for s in reversed(strategies)
+                    if s.update_at <= start_time + timedelta(hours=6)
+                ),
+                None,
+            )
+            apy = strategy.apy if strategy else 0.0
+            apy_chart.append((start_time, apy))
+            start_time += timedelta(hours=6)
         return apy_chart
 
     @staticmethod
@@ -146,7 +168,7 @@ class VaultOperations:
             logger.error(f"Vault {vault_name} not found.")
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
         end_time = datetime.utcnow()
-        start_time = end_time - timedelta(days=days)
+        start_time = end_time - timedelta(days=days + 1)
         histories = (
             await VaultsHistory.find(
                 And(
@@ -163,7 +185,21 @@ class VaultOperations:
                 f"No TVL data found for vault {vault_name} in the last {days} days."
             )
             return []
-        tvl_chart = [(history.update_at, history.tvl) for history in histories]
+        end_time = get_current_target_time()
+        start_time = end_time - timedelta(days=days)
+        tvl_chart: list[tuple[datetime, float]] = []
+        while start_time <= end_time:
+            history = next(
+                (
+                    h
+                    for h in reversed(histories)
+                    if h.update_at <= start_time + timedelta(hours=6)
+                ),
+                None,
+            )
+            tvl = history.tvl if history else 0.0
+            tvl_chart.append((start_time, tvl))
+            start_time += timedelta(hours=6)
         return tvl_chart
 
     @staticmethod
