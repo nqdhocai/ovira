@@ -3,10 +3,10 @@ COPY --chown=gradle:gradle . /home/gradle/src
 WORKDIR /home/gradle/src
 
 RUN jlink \
-    --verbose \
-    --add-modules java.base,jdk.unsupported,java.desktop,java.instrument,java.logging,java.management,java.sql,java.xml \
-    --compress 2 --strip-debug --no-header-files --no-man-pages \
-    --output /opt/minimal-java
+  --verbose \
+  --add-modules java.base,jdk.unsupported,java.desktop,java.instrument,java.logging,java.management,java.sql,java.xml \
+  --compress 2 --strip-debug --no-header-files --no-man-pages \
+  --output /opt/minimal-java
 
 RUN gradle build --no-daemon -x test
 
@@ -22,4 +22,4 @@ RUN mkdir /app
 COPY --from=build "$JAVA_HOME" "$JAVA_HOME"
 COPY --from=build /home/gradle/src/build/libs/ /app/
 
-ENTRYPOINT ["java","-jar", "/app/coral-server-1.0-SNAPSHOT.jar"]
+ENTRYPOINT ["java", "-jar", "/app/coral-server-1.0-SNAPSHOT.jar"]
