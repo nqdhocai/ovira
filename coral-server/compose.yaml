@@ -9,8 +9,6 @@ services:
     # NOTE: Temporarily expose port
     volumes:
       - ./src/main/resources/:/config
-    ports:
-      - 5555:5555
     restart: unless-stopped
     networks:
       - strategy-provider-app
