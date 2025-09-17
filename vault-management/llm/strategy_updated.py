@@ -7,12 +7,14 @@ from string import Template
 import google.generativeai as genai
 from dotenv import load_dotenv
 
+from configs import get_logger
 from mongo.schemas import UpdatedInfo, VaultsStrategy
 
 _ = load_dotenv()
+logger = get_logger("strategy_changes_by_llm")
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# Ép model trả JSON để dễ parse, giảm rủi ro lẫn markdown
+
 model = genai.GenerativeModel(
     "gemini-2.0-flash", generation_config={"response_mime_type": "application/json"}
 )
@@ -27,8 +29,7 @@ SCHEMA OF EACH INPUT
     "risk_label": "balanced|conservative|aggressive|...",
     "allocations": [{"pool_name": "string", "weight_pct": "float number"}]
   },
-  "reasons": ["string", ...],
-  "critic_notes": ["string", ...]
+  reasoning_trace: [{"role": "string", "content": "string"}]
 }
 
 INPUT
@@ -41,12 +42,8 @@ $new
 TASK
 Return ONLY a JSON object with this exact shape:
 {
-  "actions": [
-    {
-      "action": "Rebalance"|"Add Pool"|"Remove Pool"|"Risk Profile Change"|"Rationale Update"|"No Changes",
-      "details": "string"
-    }
-  ]
+  "action": "Rebalance"|"Add Pool"|"Remove Pool"|"Risk Profile Change"|"Rationale Update"|"No Changes",
+  "details": "string"    
 }
 
 RULES
@@ -70,21 +67,14 @@ RULES
 def get_strategy_changes(
     new_strategy: VaultsStrategy, last_strategy: VaultsStrategy
 ) -> UpdatedInfo:
-    prompt = PROMPT_TPL.substitute(
-        last=json.dumps(last_strategy.model_dump(), ensure_ascii=False),
-        new=json.dumps(new_strategy.model_dump(), ensure_ascii=False),
-    )
-
-    resp = model.generate_content(prompt)  # không dùng keyword 'prompt='
-    text = getattr(resp, "text", "") or ""
-    if not text:
-        # fallback phòng khi SDK thay đổi cấu trúc
-        try:
-            cand = resp.candidates[0]
-            parts = getattr(cand.content, "parts", [])
-            text = "".join(getattr(p, "text", "") for p in parts)
-        except Exception:
-            text = ""
-
-    data = json.loads(text)  # phải là JSON thuần theo yêu cầu prompt
-    return UpdatedInfo.model_validate(data)
+    try:
+        prompt = PROMPT_TPL.substitute(
+            last=json.dumps(last_strategy.strategy.model_dump(), ensure_ascii=False),
+            new=json.dumps(new_strategy.strategy.model_dump(), ensure_ascii=False),
+        )
+        resp = model.generate_content(prompt)
+        data = json.loads(resp.text)
+        return UpdatedInfo.model_validate(data)
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        raise
