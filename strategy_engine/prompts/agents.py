@@ -50,9 +50,9 @@ Task: from feature_cards + policy → PlanCandidate.
 Update with Critic feedback.
 
 Output:
+- status: DRAFT|FIXED|FINAL
 - rationale: string  
 - allocations: pool_name, weight_pct
-- totals: weight_pct_sum  
 
 Constraints:  
 - weight sum ≈ 100.  
@@ -71,14 +71,16 @@ Task: review PlanCandidate, highlight issues, create guild and send it to Planne
 
 Output:
 - status: APPROVED|REJECTED|NEEDS_CHANGES
-- critic_notes: [string]  
-- required_changes: field_path, reason, fix?, severity  
+- critic_notes: [string] 
+- required_changes: field_path, reason, fix, severity  
 - guidance: [string]  
 
 Constraints:  
 - Don’t edit plan directly.  
 - Link issues to specific fields or Verifier findings.  
-- When needed to improve plan, provide clear, actionable guidance; MUST use "send_message" to send it to Planner.
+- When needed to improve plan, provide clear, actionable guidance
+- MUST use "send_message" to send it to Planner.
+- "critic_notes" should 
 """
 )
 
@@ -89,13 +91,13 @@ VERIFIER_PROMPT = (
 ROLE=Verifier (Schema+Policy+Trace).  
 Task: just validate PlanCandidate then point out what is not reasonable; needs to be edited; then send it to Critic.
 Output:
-- verified: bool  
+- status: VERIFIED|REJECTED
 - violations: code, detail, location  
 - scorecard: schema, policy, trace (0..1)  
 - errors: [string]|null  
 
 Constraints:  
-- If verified=false → must list violations.  
+- If status=REJECTED → must list violations.  
 - If normalized (e.g., weights) → note in plan.  
 """
 )
@@ -110,7 +112,7 @@ Task: Aggregate the validated outputs from Planner, Verifier, and Critic, normal
 
 Output:
 - strategy:  
-    - risk_label: conservative|balanced|aggressive
+    - risk_label: CONSERVATIVE|BALANCED|AGGRESSIVE
     - allocations:  
         - pool_name: string  
         - weight_pct: number  
@@ -123,19 +125,19 @@ Constraints:
 """
 )
 
-REASONING_TRACE_PROMPT = (
-    COMMON_LOOP
-    + """
-ROLE = Reasoning Trace Collector
-Task: Collect and summarize reasoning traces from Planners, Critics, and Verifiers into a concise format.
-Output:
-    - reasoning_trace:
-    - [
-        - role: planner|critic|verifier
-        - content: string (rewrite their reasoning; ensure the quantitative elements in it are logical and accurate)
-    ]
-Constraints:
-    - Ensure each entry in the reasoning_trace accurately reflects each actor's key points and decisions.
-    - Only return a valid JSON object. No additional text, code fences, or explanations.
-"""
-)
+# REASONING_TRACE_PROMPT = (
+#     COMMON_LOOP
+#     + """
+# ROLE = Reasoning Trace Collector
+# Task: Collect and summarize reasoning traces from Planners, Critics, and Verifiers into a concise format.
+# Output:
+#     - reasoning_trace:
+#     - [
+#         - role: planner|critic|verifier
+#         - content: string (rewrite their reasoning; ensure the quantitative elements in it are logical and accurate)
+#     ]
+# Constraints:
+#     - Ensure each entry in the reasoning_trace accurately reflects each actor's key points and decisions.
+#     - Only return a valid JSON object. No additional text, code fences, or explanations.
+# """
+# )

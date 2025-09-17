@@ -34,6 +34,7 @@ class TraceItem(BaseModel):
     role: Literal["planner", "verifier", "critic", "orchestrator", "system", "tool"]
     content: str
     raw: str
+    status: str | None
     thread_id: str | None
     message_id: str | None
     timestamp_ms: str | None

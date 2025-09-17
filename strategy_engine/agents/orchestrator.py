@@ -251,6 +251,7 @@ class ResultProcessor:
                         TraceItem(
                             role="tool",
                             tool_name=tool_name,
+                            status=None,
                             tool_input=tool_input,
                             tool_output=tool_output,
                             content=f"[TOOL CALL] {tool_name} input={tool_input}",
@@ -264,9 +265,6 @@ class ResultProcessor:
                     pass
 
             if isinstance(observation, str):
-                if "No new messages received within the timeout period" in observation:
-                    verifier_timeout_seen = True
-
                 for msg in self._extract_resolved_blocks(observation):
                     role = self._map_sender_to_role(msg["sender"])
                     content_raw = msg["content_unescaped"]
@@ -283,10 +281,18 @@ class ResultProcessor:
                     else:
                         content_text = content_raw
 
+                    try:
+                        status = (
+                            payload.get("status") if isinstance(payload, dict) else None
+                        )
+                    except Exception:
+                        status = None
+
                     trace.append(
                         TraceItem(
                             role=role,
                             content=content_text,
+                            status=status,
                             raw=msg["raw"],
                             thread_id=msg["thread_id"],
                             message_id=msg["message_id"],
@@ -296,16 +302,7 @@ class ResultProcessor:
                             tool_output=None,
                         )
                     )
-        has_verifier_msg = any(t.role == "verifier" for t in trace)
-        if verifier_timeout_seen and not has_verifier_msg:
-            trace.append(
-                (
-                    TraceItem.model_validate({
-                        "role": "verifier",
-                        "content": "[TIMEOUT] No new messages received within the timeout period",
-                    })
-                )
-            )
+
         if "output" in agent_payload:
             content = agent_payload["output"]
             try:
@@ -322,6 +319,7 @@ class ResultProcessor:
                 TraceItem(
                     role="orchestrator",
                     content=content,
+                    status=None,
                     raw="",
                     thread_id=None,
                     message_id=None,
