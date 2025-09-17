@@ -3,7 +3,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 
-from backend.vault import VaultOperations, VaultStrategyUpdatedInfo
+from backend.vault import VaultOperations, VaultsData, VaultStrategyUpdatedInfo
 from hooks.error import ResourceNotFound
 from hooks.success import SuccessResponse
 from mongo.schemas import PoolAllocation, ReasoningTrace
@@ -148,7 +148,7 @@ async def get_tvl_chart(vault_name: str, days: int = 30):
         )
 
 
-@router.get("/allocations", response_model=list[PoolAllocation])
+@router.get("/pools_allocations", response_model=list[PoolAllocation])
 async def get_vault_allocations(vault_name: str):
     r"""
     Retrieve allocation details for a vault.
@@ -158,7 +158,7 @@ async def get_vault_allocations(vault_name: str):
     - Errors: 404 if no allocation data found, 500 on other failures.
     """
     try:
-        return await VaultOperations.get_vault_allocations(vault_name)
+        return await VaultOperations.get_vault_pools_allocations(vault_name)
     except ResourceNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -208,9 +208,10 @@ async def get_vault_reasoning_trace(vault_name: str):
         )
 
 
-@router.get("/existing_vaults", response_model=list[str])
+@router.get("/existing_vaults", response_model=list[VaultsData])
 async def get_existing_vaults():
     r"""
-    Get list of existing vault. Return list[str] is list of vaults's name
+    Get list of existing vault. Return list[VaultsData] is list of vaults's data.
+    (name: str, asset: Literal["USDT", "USDC"], risk_label: Literal["conservative", "balanced", "aggressive"], address: str, update_frequency: float)
     """
     return await VaultOperations.get_existing_vaults()

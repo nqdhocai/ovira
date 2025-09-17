@@ -23,6 +23,14 @@ from .user import UserOperations
 logger = get_logger("vault_operations")
 
 
+class VaultsData(BaseModel):
+    name: str
+    asset: Literal["USDT", "USDC"]
+    risk_label: Literal["conservative", "balanced", "aggressive"]
+    address: str
+    update_frequency: float | None = None
+
+
 def get_current_target_time() -> datetime:
     now = datetime.utcnow()
     now = now.replace(minute=0, second=0, microsecond=0)
@@ -203,7 +211,7 @@ class VaultOperations:
         return tvl_chart
 
     @staticmethod
-    async def get_vault_allocations(vault_name: str) -> list[PoolAllocation]:
+    async def get_vault_pools_allocations(vault_name: str) -> list[PoolAllocation]:
         vault = await VaultsMetadata.find_one(VaultsMetadata.name == vault_name)
         if not vault:
             logger.error(f"Vault {vault_name} not found.")
@@ -256,9 +264,18 @@ class VaultOperations:
         return update_info
 
     @staticmethod
-    async def get_existing_vaults() -> list[str]:
+    async def get_existing_vaults() -> list[VaultsData]:
         vaults = await VaultsMetadata.find().to_list()
-        return [vault.name for vault in vaults]
+        return [
+            VaultsData(
+                name=vault.name,
+                asset=vault.asset,
+                risk_label=vault.risk_label,
+                address=vault.address,
+                update_frequency=vault.update_frequency,
+            )
+            for vault in vaults
+        ]
 
     @staticmethod
     async def get_strategy_ai_reasoning_trace(vault_name: str) -> list[ReasoningTrace]:
