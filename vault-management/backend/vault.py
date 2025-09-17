@@ -62,7 +62,9 @@ class VaultOperations:
             owner = await UserOperations.create_user(owner_wallet_address)
         created_time = datetime.utcnow()
         vault = VaultsMetadata(
-            id=hasher.get_hash(vault_name),
+            id=hasher.get_hash(
+                f"{vault_name}-{owner_wallet_address}-{created_time}-{asset}"
+            ),
             name=vault_name,
             owner=owner,
             asset=asset,

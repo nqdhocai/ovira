@@ -71,7 +71,7 @@ class StrategyOperations:
         _ = await vault_data.save()
         logger.info(f"Vault strategy data saved for vault {vault.name}.")
         # Save Updated Info
-        lastest_strategy = (
+        lastest_strategy: VaultsStrategy | None = (
             await VaultsStrategy.find(VaultsStrategy.vault.id == vault.id)
             .sort(-VaultsStrategy.update_at)
             .first_or_none()
@@ -88,9 +88,6 @@ class StrategyOperations:
                 logger.info(
                     f"Vault {vault.name} strategy updated. Changes: {last_updated.last_updated}"
                 )
-            except ValueError as e:
-                logger.error(f"Value error for vault {vault.name}: {e}")
-                raise
             except Exception as e:
                 logger.error(f"Error updating info for vault {vault.name}: {e}")
                 raise
