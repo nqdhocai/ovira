@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-import asyncio
+import html
 import json
+import logging
+import re
 import urllib.parse
 from dataclasses import dataclass
 from typing import Any, Literal
 
 # App-specific deps
 from agents.model import get_llm_model
-from agents.models import FinalStrategy
+from agents.models import AgentMessage, FinalStrategy, Strategy, TraceItem
 from config.settings import mcp_config
 from dotenv import load_dotenv
 from langchain.agents import AgentExecutor, create_tool_calling_agent
@@ -18,8 +20,13 @@ from langchain_core.prompts import MessagesPlaceholder
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from prompts.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
 from pydantic import BaseModel, Field
-from utils.helpers import extract_json_blocks
+from utils.helpers import extract_json_blocks, json_to_key_value_str
 from utils.singleton_base import SingletonBase
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 # =========================
@@ -145,10 +152,23 @@ class PolicyBuilder:
 class ResultProcessor:
     def process_result(self, result: dict[str, Any]) -> FinalStrategy:
         output = result.get("output", "")
-        parsed = extract_json_blocks(output)[0]
-        formatted = json.dumps(parsed, ensure_ascii=False)
-        self._save_to_file(parsed)
-        return FinalStrategy.model_validate_json(formatted)
+        parsed_reasoning_trace: list[TraceItem] = self.build_reasoning_trace(
+            result, include_tool_calls=False
+        )
+        try:
+            parsed = json.loads(output)
+
+        except Exception:
+            parsed = extract_json_blocks(output)[0]
+
+        strategy_str = json.dumps(parsed.get("strategy", ""), ensure_ascii=False)
+        strategy = Strategy.model_validate_json(strategy_str)
+        reasoning_trace = [
+            AgentMessage(role=i.role, content=i.content)
+            for i in parsed_reasoning_trace
+            if i.role in ("planner", "critic", "verifier")
+        ]
+        return FinalStrategy(strategy=strategy, reasoning_trace=reasoning_trace)
 
     def _save_to_file(self, data: dict[str, Any]) -> None:
         try:
@@ -156,6 +176,163 @@ class ResultProcessor:
                 json.dump(data, f, ensure_ascii=False, indent=2)
         except Exception:
             pass
+
+    def _safe_json_loads(self, s: str) -> Any:
+        try:
+            return json.loads(s)
+        except Exception:
+            return None
+
+    def _extract_resolved_blocks(self, observation_str: str) -> list[dict]:
+        RESOLVED_RE = re.compile(
+            r'<ResolvedMessage\s+id="(?P<id>[^"]+)"\s+threadName="[^"]*"\s+threadId="(?P<thread>[^"]+)"\s+senderId="(?P<sender>[^"]+)"\s+content="(?P<content>.*?)"\s+timestamp="(?P<ts>\d+)">'
+        )
+        out = []
+        for m in RESOLVED_RE.finditer(observation_str):
+            msg_id = m.group("id")
+            thread_id = m.group("thread")
+            sender = m.group("sender")
+            ts = m.group("ts")
+            content_escaped = m.group("content")
+            # content HTML-escaped → unescape
+            content_unescaped = html.unescape(content_escaped)
+            out.append({
+                "message_id": msg_id,
+                "thread_id": thread_id,
+                "sender": sender,
+                "timestamp_ms": ts,
+                "content_unescaped": content_unescaped,
+                "raw": m.group(0),
+                "json_payload": self._safe_json_loads(content_unescaped),
+            })
+        return out
+
+    def _map_sender_to_role(
+        self,
+        sender: str,
+    ) -> Literal["planner", "verifier", "critic", "orchestrator", "system", "tool"]:
+        sender = sender.lower()
+        if sender == "planner":
+            return "planner"
+        if sender == "critic":
+            return "critic"
+        if sender == "verifier":
+            return "verifier"
+        if sender == "orchestrator":
+            return "orchestrator"
+        return "system"  # fallback
+
+    def build_reasoning_trace(
+        self, agent_payload: dict, include_tool_calls: bool = True
+    ) -> list[TraceItem]:
+        """
+        - Iterate through intermediate_steps ([(ToolAgentAction, observation), ...]).
+        - Extract all ResolvedMessage (planner/critic/verifier/orchestrator) with original content.
+        - Record verifier timeout if any.
+        - (Optional) Include tool-calls logs (tool, input, raw output) in trace.
+        """
+        trace: list[TraceItem] = []
+        steps = agent_payload.get("intermediate_steps", [])
+        verifier_timeout_seen = False
+
+        for step in steps:
+            if not (isinstance(step, (list, tuple)) and len(step) >= 2):
+                continue
+
+            tool_act, observation = step[0], step[1]
+
+            if include_tool_calls:
+                try:
+                    tool_name = getattr(tool_act, "tool", None)
+                    tool_input = getattr(tool_act, "tool_input", None)
+
+                    tool_output = observation if isinstance(observation, str) else None
+                    trace.append(
+                        TraceItem(
+                            role="tool",
+                            tool_name=tool_name,
+                            tool_input=tool_input,
+                            tool_output=tool_output,
+                            content=f"[TOOL CALL] {tool_name} input={tool_input}",
+                            raw=str(observation)[:20000],
+                            thread_id=None,
+                            message_id=None,
+                            timestamp_ms=None,
+                        )
+                    )
+                except Exception:
+                    pass
+
+            if isinstance(observation, str):
+                if "No new messages received within the timeout period" in observation:
+                    verifier_timeout_seen = True
+
+                for msg in self._extract_resolved_blocks(observation):
+                    role = self._map_sender_to_role(msg["sender"])
+                    content_raw = msg["content_unescaped"]
+                    payload = msg["json_payload"]
+
+                    if payload is not None:
+                        try:
+                            content_text = json.dumps(
+                                payload, ensure_ascii=False, indent=2
+                            )
+                            content_text = json_to_key_value_str(content_text, indent=2)
+                        except Exception:
+                            content_text = content_raw
+                    else:
+                        content_text = content_raw
+
+                    trace.append(
+                        TraceItem(
+                            role=role,
+                            content=content_text,
+                            raw=msg["raw"],
+                            thread_id=msg["thread_id"],
+                            message_id=msg["message_id"],
+                            timestamp_ms=msg["timestamp_ms"],
+                            tool_name=None,
+                            tool_input=None,
+                            tool_output=None,
+                        )
+                    )
+        has_verifier_msg = any(t.role == "verifier" for t in trace)
+        if verifier_timeout_seen and not has_verifier_msg:
+            trace.append(
+                (
+                    TraceItem.model_validate({
+                        "role": "verifier",
+                        "content": "[TIMEOUT] No new messages received within the timeout period",
+                    })
+                )
+            )
+        if "output" in agent_payload:
+            content = agent_payload["output"]
+            try:
+                json_blocks = extract_json_blocks(content)
+                if json_blocks:
+                    content = json_to_key_value_str(
+                        json.dumps(json_blocks[0], ensure_ascii=False, indent=2),
+                        indent=2,
+                    )
+            except Exception:
+                pass
+
+            trace.append(
+                TraceItem(
+                    role="orchestrator",
+                    content=content,
+                    raw="",
+                    thread_id=None,
+                    message_id=None,
+                    timestamp_ms=None,
+                    tool_name=None,
+                    tool_input=None,
+                    tool_output=None,
+                )
+            )
+
+        return trace
 
 
 # =========================
@@ -213,7 +390,7 @@ class OrchestratorAgent(SingletonBase):
             agent=agent,
             tools=prepared_tools,
             verbose=True,
-            return_intermediate_steps=False,
+            return_intermediate_steps=True,
             max_iterations=300,
         )
 
@@ -257,40 +434,3 @@ async def generate_strategy(
     orchestrator = OrchestratorAgent()
     await orchestrator.initialize()
     return await orchestrator.execute_strategy(pools_data, policy, risk)
-
-
-if __name__ == "__main__":
-    # Sample data for quick manual test
-    sample_pools = [
-        {
-            "id": "68be625cd6e348c1850fb228",
-            "pool": "d2141a59-c199-4be7-8d4b-c8223954836b",
-            "predictions": {
-                "predictedClass": "Stable/Up",
-                "predictedProbability": 82.0,
-                "binnedConfidence": 3,
-            },
-            "apy_statistics": {"mu": 8.26414, "sigma": 0.27637, "count": 659},
-            "apyPct1D": 5.472359916728032,
-            "apyPct7D": 49.13167235952044,
-            "apyPct30D": None,
-            "tvlUsd": 54990683.0,
-        },
-        {
-            "id": "68be625dd6e348c1850fb229",
-            "pool": "14bd0ebc-1c70-4b61-80a9-91390179286a",
-            "predictions": {
-                "predictedClass": "Stable/Up",
-                "predictedProbability": 81.0,
-                "binnedConfidence": 3,
-            },
-            "apy_statistics": {"mu": 6.58572, "sigma": 0.27241, "count": 1075},
-            "apyPct1D": 0.0,
-            "apyPct7D": 0.0,
-            "apyPct30D": None,
-            "tvlUsd": 13869592.0,
-        },
-    ]
-
-    # Run test
-    print(asyncio.run(generate_strategy(sample_pools, risk="conservative")))

@@ -35,21 +35,21 @@ critic_agent = BaseAgent(
     ),
 )
 
-final_agent = BaseAgent(
-    system_prompt=FINAL_PROMPT,
-    agent_params=CoralParams(
-        agentId="finalizer",
-        agentDescription="The Finalizer Agent aggregates all information, summarizes the discussion from Critic, Planner, and Verifier, and returns the final JSON containing both the strategy and the conversation summary.",
-    ),
-)
+# final_agent = BaseAgent(
+#     system_prompt=FINAL_PROMPT,
+#     agent_params=CoralParams(
+#         agentId="finalizer",
+#         agentDescription="The Finalizer Agent aggregates all information, summarizes the discussion from Critic, Planner, and Verifier, and returns the final JSON containing both the strategy and the conversation summary.",
+#     ),
+# )
 
-summarize_agent = BaseAgent(
-    system_prompt=REASONING_TRACE_PROMPT,
-    agent_params=CoralParams(
-        agentId="reasoning-trace",
-        agentDescription="An agent that collects and summarizes the reasoning traces from Planner, Critic, and Verifier into a concise format.",
-    ),
-)
+# summarize_agent = BaseAgent(
+#     system_prompt=REASONING_TRACE_PROMPT,
+#     agent_params=CoralParams(
+#         agentId="reasoning-trace",
+#         agentDescription="An agent that collects and summarizes the reasoning traces from Planner, Critic, and Verifier into a concise format.",
+#     ),
+# )
 
 
 async def start_agents_tasks():
@@ -58,8 +58,8 @@ async def start_agents_tasks():
         planner_agent.run_loop(),
         verifier_agent.run_loop(),
         critic_agent.run_loop(),
-        final_agent.run_loop(),
-        summarize_agent.run_loop(),
+        # final_agent.run_loop(),
+        # summarize_agent.run_loop(),
     ]
     return [asyncio.create_task(c) for c in tasks]
 
