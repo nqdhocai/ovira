@@ -2,10 +2,14 @@ import asyncio
 import traceback
 
 import httpx
+from prefect.client.schemas.schedules import CronSchedule
 
 from prefect import aserve, flow
-from prefect.client.schemas.schedules import CronSchedule
-from prefect.monitors import defi_data_pipeline
+from prefect.monitors import (
+    defi_data_pipeline,
+    user_earnings_updater,
+    vaults_strategy_updater,
+)
 
 
 async def create_work_pool():
@@ -51,7 +55,25 @@ async def deploy_flow():
             description="Fetches data from DeFiLlama and aggregates protocol snapshots.",
             schedule=CronSchedule(cron="0 */3 * * *"),  # Every 3 hours
         )
-        await aserve(defi_data_pipeline_deployment)
+        vaults_strategy_updater_deployment = (
+            await vaults_strategy_updater.to_deployment(
+                name="vaults-strategy-updater",
+                tags=["vaults", "strategy", "updater"],
+                description="Updates strategies for all vaults.",
+                schedule=CronSchedule(cron="0 * * * *"),  # Every hour
+            )
+        )
+        user_earnings_updater_deployment = await user_earnings_updater.to_deployment(
+            name="user-earnings-updater",
+            tags=["user", "earnings", "updater"],
+            description="Updates earnings for all users.",
+            schedule=CronSchedule(cron="0 */6 * * *"),  # Every 6 hours
+        )
+        await aserve(
+            defi_data_pipeline_deployment,
+            vaults_strategy_updater_deployment,
+            user_earnings_updater_deployment,
+        )
         print("Deployment created successfully.")
     except Exception as e:
         print(f"Error creating deployment: {e}")

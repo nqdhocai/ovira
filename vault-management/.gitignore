@@ -1,0 +1,18 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info/
+.env
+app-config.yaml
+.ruff_cache/
+ruff_check.json
+pyright_check.json
+
+# Virtual environments
+.venv
+
+# Testing files
+test.py
