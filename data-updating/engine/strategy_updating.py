@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import datetime
 
 from clients import Clients
@@ -36,7 +37,9 @@ class StrategyUpdating:
             logger.error(f"Error updating strategy for vault {vault_name}: {str(e)}")
             raise
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
+            logger.error(
+                f"Unexpected error at get new strategy for {vault_name}: {repr(e)}"
+            )
             raise
 
     @staticmethod
@@ -44,37 +47,65 @@ class StrategyUpdating:
         vault_name: str, token: str, risk_label: str, policy: str | None = None
     ):
         logger.info(f"Updating strategy for vault: {vault_name}")
-        endpoint = f"http://{vault_management_config.url}:{vault_management_config.port}/strategy/update_vault_strategy"
+        endpoint = f"http://{vault_management_config.url}:{vault_management_config.port}/strategy/update_vault_strategy?vault_name={vault_name}"
         try:
             new_strategy = await StrategyUpdating.get_new_vault_strategy(
                 vault_name, token, risk_label, policy
             )
             data = new_strategy.model_dump()
             response = await aiohttp_client.get_response_async(
-                method=HTTPMethod.GET, url=endpoint, data=data
+                method=HTTPMethod.POST, url=endpoint, data=data
             )
             logger.info(f"Strategy updated for vault {vault_name}: {response}")
         except (GenericServiceError, FailedExternalAPI) as e:
             logger.error(f"Error updating strategy for vault {vault_name}: {str(e)}")
             raise
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
+            logger.error(
+                f"Unexpected error at update strategy for vault {vault_name}: {repr(e)}"
+            )
             raise
 
     @staticmethod
     async def update_all_vault_strategy(update_time: datetime):
+        logger.info(f"Starting update of all vault strategies at {update_time}")
         vaults = await VaultsMetadata.find_all().to_list()
-        for vault in vaults:
-            if (update_time - root_time).total_seconds() % (
-                vault.update_frequency * 3600
-            ) < 300:
-                _ = asyncio.create_task(
-                    StrategyUpdating.update_vault_strategy(
+        CONCURRENCY = 5
+        STAGGER_SEC = 0.2
+
+        sem = asyncio.Semaphore(CONCURRENCY)
+        tasks: list[asyncio.Task] = []
+
+        async def run_one(vault: VaultsMetadata):
+            async with sem:
+                try:
+                    _ = await StrategyUpdating.update_vault_strategy(
                         vault_name=vault.name,
                         token=vault.asset,
                         risk_label=vault.risk_label,
                         policy=vault.policy_prompt if vault.policy_prompt else None,
                     )
-                )
-                await asyncio.sleep(1)  # Stagger requests to avoid overload
-        logger.info("All vault strategies update tasks have been initiated.")
+                    logger.info(f"Completed strategy update for vault: {vault.name}")
+                except Exception as e:
+                    logger.error(
+                        f"Failed to update strategy for vault {vault.name}: {str(e)}"
+                    )
+
+        for vault in vaults:
+            if (update_time - root_time).total_seconds() % (
+                vault.update_frequency * 3600
+            ) < 300:
+                tasks.append(asyncio.create_task(run_one(vault)))
+                await asyncio.sleep(STAGGER_SEC)
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        errors = sum(
+            1
+            for r in results
+            if isinstance(r, Exception)
+            or isinstance(r, FailedExternalAPI)
+            or isinstance(r, GenericServiceError)
+        )
+        logger.info(
+            "Vault strategy updates finished: total=%d, errors=%d", len(results), errors
+        )

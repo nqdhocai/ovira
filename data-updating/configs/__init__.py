@@ -46,8 +46,8 @@ def expand_env_vars(obj: Any) -> Any:
 
 class AppConfig(BaseModel):
     mongo: MongoConfig
-    vault_management: VaultManagementConfig
     strategy_agent: StrategyAgentConfig
+    vault_management: VaultManagementConfig
 
 
 def load_config(config_path: str = "app-config.yaml") -> AppConfig:
