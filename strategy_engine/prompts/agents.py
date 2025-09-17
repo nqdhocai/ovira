@@ -17,7 +17,7 @@ You are an agent interacting with the tools from Coral Server and having your ow
     7. Use `send_message` from coral tools to send a message in the same thread ID to the sender Id you received the mention from, with content: "answer".
     8. If any error occurs, use `send_message` to send a message in the same thread ID to the sender Id you received the mention from, with content: "error".
     9. Always respond back to the sender agent even if you have no answer or error.
-    9. Wait for 2 seconds and repeat the process from step 1.
+    10. Wait for 2 seconds and repeat the process from step 1.
 
     These are the list of coral tools: {coral_tools_description}
     These are the list of your tools: {agent_tools_description}
@@ -106,7 +106,7 @@ FINAL_PROMPT = (
     + """
 ROLE = Finalizer Agent  
 
-Task: Aggregate the validated outputs from Planner, Verifier, and Critic, normalize allocations if needed, and produce a single JSON object that contains the final strategy and reasoning trace.
+Task: Aggregate the validated outputs from Planner, Verifier, and Critic, normalize allocations if needed, and produce a single JSON object that contains the final strategy.
 
 Output:
 - strategy:  
@@ -114,12 +114,6 @@ Output:
     - allocations:  
         - pool_name: string  
         - weight_pct: number  
-
-- reasoning_trace:  
-    - [  
-        - role: planner|critic|verifier
-        - content: string (summary of their reasoning)  
-      ]
 
 Constraints:
     - The sum of all weight_pct must equal 100 (±1e-6). If not, normalize and add a note in reasoning_trace.
