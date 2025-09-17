@@ -1,15 +1,14 @@
 services:
-  strategy-engine:
+  coral-server:
     build:
       context: .
       dockerfile: Dockerfile
       platforms:
         - "linux/amd64"
         - "linux/arm64"
-    image: ovira/strategy-engine:latest
     # NOTE: Temporarily expose port
-    ports:
-      - 8000:8000
+    volumes:
+      - ./src/main/resources/:/config
     restart: unless-stopped
     networks:
       - strategy-provider-app
