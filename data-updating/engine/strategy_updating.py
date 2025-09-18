@@ -52,6 +52,8 @@ class StrategyUpdating:
             new_strategy = await StrategyUpdating.get_new_vault_strategy(
                 vault_name, token, risk_label, policy
             )
+            with open(f"strategy_{vault_name}.json", "w") as f:
+                json.dump(new_strategy.model_dump(), f, indent=4)
             data = new_strategy.model_dump()
             response = await aiohttp_client.get_response_async(
                 method=HTTPMethod.POST, url=endpoint, data=data

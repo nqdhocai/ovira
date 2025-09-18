@@ -1,0 +1,49 @@
+{
+    "strategy": {
+        "risk_label": "balanced",
+        "allocations": [
+            {
+                "pool_name": "USDT-allbridge-classic-4",
+                "weight_pct": 25.0
+            },
+            {
+                "pool_name": "USDT-kamino-lend-5",
+                "weight_pct": 20.0
+            },
+            {
+                "pool_name": "USDT-save-7",
+                "weight_pct": 15.0
+            },
+            {
+                "pool_name": "USDT-francium-11",
+                "weight_pct": 10.0
+            },
+            {
+                "pool_name": "USDT-save-14",
+                "weight_pct": 5.0
+            },
+            {
+                "pool_name": "USDT-save-15",
+                "weight_pct": 5.0
+            },
+            {
+                "pool_name": "USDT-vaultka-19",
+                "weight_pct": 5.0
+            },
+            {
+                "pool_name": "USDT-save-20",
+                "weight_pct": 3.0
+            },
+            {
+                "pool_name": "USDT-save-21",
+                "weight_pct": 2.0
+            }
+        ]
+    },
+    "reasoning_trace": [
+        {
+            "role": "planner",
+            "content": "STATUS: DRAFT\nRATIONALE: 1. **Per-pool reasoning**: \n   - USDT-allbridge-classic-4: TVL $3,835,434, mu 0.11647, sigma 0.00367, APY trend stable. Weight 25% due to high TVL and low risk.\n   - USDT-kamino-lend-5: TVL $3,112,026, mu 7.81705, sigma 0.27658, APY trend moderate. Weight 20% for balanced risk and yield.\n   - USDT-save-7: TVL $1,549,833, mu 5.6025, sigma 0.41932, APY trend low. Weight 15% for moderate yield.\n   - USDT-francium-11: TVL $235,736, mu 11.05273, sigma 0.29596, APY trend low. Weight 10% for high yield potential.\n   - USDT-save-14: TVL $52,099, mu 0.0, sigma 0.0, APY trend none. Weight 5% for stability.\n   - USDT-save-15: TVL $34,649, mu 0.0, sigma 0.0, APY trend none. Weight 5% for stability.\n   - USDT-vaultka-19: TVL $21,540, mu 9.81652, sigma 0.41498, APY trend none. Weight 5% for yield potential.\n   - USDT-save-20: TVL $11,204, mu 1.18295, sigma 0.04334, APY trend none. Weight 3% for low risk.\n   - USDT-save-21: TVL $10,786, mu 0.58403, sigma 0.10953, APY trend none. Weight 2% for low risk.\n2. **Global summary**: The allocation prioritizes stability with significant investments in pools with high TVL and low sigma, while also capturing moderate yield opportunities. The strategy supports a balanced risk label by balancing between low-risk pools and moderate yield pools.\nALLOCATIONS:\n  - ITEM 1:\n    POOL_NAME: USDT-allbridge-classic-4\n    WEIGHT_PCT: 25\n  - ITEM 2:\n    POOL_NAME: USDT-kamino-lend-5\n    WEIGHT_PCT: 20\n  - ITEM 3:\n    POOL_NAME: USDT-save-7\n    WEIGHT_PCT: 15\n  - ITEM 4:\n    POOL_NAME: USDT-francium-11\n    WEIGHT_PCT: 10\n  - ITEM 5:\n    POOL_NAME: USDT-save-14\n    WEIGHT_PCT: 5\n  - ITEM 6:\n    POOL_NAME: USDT-save-15\n    WEIGHT_PCT: 5\n  - ITEM 7:\n    POOL_NAME: USDT-vaultka-19\n    WEIGHT_PCT: 5\n  - ITEM 8:\n    POOL_NAME: USDT-save-20\n    WEIGHT_PCT: 3\n  - ITEM 9:\n    POOL_NAME: USDT-save-21\n    WEIGHT_PCT: 2"
+        }
+    ]
+}
