@@ -3,7 +3,7 @@ build-backend = "setuptools.build_meta"
 requires = ["setuptools>=76"]
 
 [project]
-name = "raw-data"
+name = "data-updating"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"

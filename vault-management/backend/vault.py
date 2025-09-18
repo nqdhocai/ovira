@@ -23,6 +23,22 @@ from .user import UserOperations
 logger = get_logger("vault_operations")
 
 
+class VaultsData(BaseModel):
+    name: str
+    asset: Literal["USDT", "USDC"]
+    risk_label: Literal["conservative", "balanced", "aggressive"]
+    address: str
+    update_frequency: float | None = None
+
+
+def get_current_target_time() -> datetime:
+    now = datetime.utcnow()
+    now = now.replace(minute=0, second=0, microsecond=0)
+    if now.hour % 6 != 0:
+        now = now - timedelta(hours=now.hour % 6)
+    return now
+
+
 class VaultStrategyUpdatedInfo(BaseModel):
     timestamp: datetime
     action: str
@@ -46,7 +62,9 @@ class VaultOperations:
             owner = await UserOperations.create_user(owner_wallet_address)
         created_time = datetime.utcnow()
         vault = VaultsMetadata(
-            id=hasher.get_hash(vault_name),
+            id=hasher.get_hash(
+                f"{vault_name}-{owner_wallet_address}-{created_time}-{asset}"
+            ),
             name=vault_name,
             owner=owner,
             asset=asset,
@@ -117,7 +135,7 @@ class VaultOperations:
             logger.error(f"Vault {vault_name} not found.")
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
         end_time = datetime.utcnow()
-        start_time = end_time - timedelta(days=days)
+        start_time = end_time - timedelta(days=days + 1)
         strategies = (
             await VaultsStrategy.find(
                 And(
@@ -134,7 +152,21 @@ class VaultOperations:
                 f"No strategy data found for vault {vault_name} in the last {days} days."
             )
             return []
-        apy_chart = [(strategy.update_at, strategy.apy) for strategy in strategies]
+        end_time = get_current_target_time()
+        start_time = end_time - timedelta(days=days)
+        apy_chart: list[tuple[datetime, float]] = []
+        while start_time <= end_time:
+            strategy = next(
+                (
+                    s
+                    for s in reversed(strategies)
+                    if s.update_at <= start_time + timedelta(hours=6)
+                ),
+                None,
+            )
+            apy = strategy.apy if strategy else 0.0
+            apy_chart.append((start_time, apy))
+            start_time += timedelta(hours=6)
         return apy_chart
 
     @staticmethod
@@ -146,7 +178,7 @@ class VaultOperations:
             logger.error(f"Vault {vault_name} not found.")
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
         end_time = datetime.utcnow()
-        start_time = end_time - timedelta(days=days)
+        start_time = end_time - timedelta(days=days + 1)
         histories = (
             await VaultsHistory.find(
                 And(
@@ -163,11 +195,25 @@ class VaultOperations:
                 f"No TVL data found for vault {vault_name} in the last {days} days."
             )
             return []
-        tvl_chart = [(history.update_at, history.tvl) for history in histories]
+        end_time = get_current_target_time()
+        start_time = end_time - timedelta(days=days)
+        tvl_chart: list[tuple[datetime, float]] = []
+        while start_time <= end_time:
+            history = next(
+                (
+                    h
+                    for h in reversed(histories)
+                    if h.update_at <= start_time + timedelta(hours=6)
+                ),
+                None,
+            )
+            tvl = history.tvl if history else 0.0
+            tvl_chart.append((start_time, tvl))
+            start_time += timedelta(hours=6)
         return tvl_chart
 
     @staticmethod
-    async def get_vault_allocations(vault_name: str) -> list[PoolAllocation]:
+    async def get_vault_pools_allocations(vault_name: str) -> list[PoolAllocation]:
         vault = await VaultsMetadata.find_one(VaultsMetadata.name == vault_name)
         if not vault:
             logger.error(f"Vault {vault_name} not found.")
@@ -220,9 +266,18 @@ class VaultOperations:
         return update_info
 
     @staticmethod
-    async def get_existing_vaults() -> list[str]:
+    async def get_existing_vaults() -> list[VaultsData]:
         vaults = await VaultsMetadata.find().to_list()
-        return [vault.name for vault in vaults]
+        return [
+            VaultsData(
+                name=vault.name,
+                asset=vault.asset,
+                risk_label=vault.risk_label,
+                address=vault.address,
+                update_frequency=vault.update_frequency,
+            )
+            for vault in vaults
+        ]
 
     @staticmethod
     async def get_strategy_ai_reasoning_trace(vault_name: str) -> list[ReasoningTrace]:

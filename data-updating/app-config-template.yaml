@@ -2,10 +2,10 @@ mongo:
   uri: "mongodb://131.153.202.197:27777/"
   db_name: "defi_agent_db"
 
-strategy-agent:
-  url: "localhost"
-  port: 8000
+strategy_agent:
+  url: "131.153.202.197"
+  port: "24141"
 
-vault-management:
-  url: "localhost"
-  port: 8123
+vault_management:
+  url: "131.153.239.187"
+  port: "8124"

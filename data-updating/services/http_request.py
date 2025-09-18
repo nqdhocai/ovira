@@ -41,7 +41,7 @@ class HTTPClient(metaclass=SingletonMeta):
 
     async def get_aiohttp_session(self) -> ClientSession:
         if self._aiohttp_session is None or self._aiohttp_session.closed:
-            timeout = ClientTimeout(total=30)
+            timeout = ClientTimeout(total=300)
             self._aiohttp_session = aiohttp.ClientSession(timeout=timeout)
         return self._aiohttp_session
 
