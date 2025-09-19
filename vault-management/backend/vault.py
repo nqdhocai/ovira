@@ -314,7 +314,7 @@ class VaultOperations:
             for vault_name in all_vault_names
         ]
         list_vaults_with_apys.sort(key=lambda x: x.apy, reverse=True)
-        result = {i: vault_apy for i, vault_apy in enumerate(list_vaults_with_apys)}
+        result = {i + 1: vault_apy for i, vault_apy in enumerate(list_vaults_with_apys)}
         return result
 
     @staticmethod
