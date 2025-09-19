@@ -8,6 +8,7 @@ from mongo.schemas import UserBalanceHistory, UserMetadata, VaultsMetadata
 from services.http_request import HTTPMethod
 
 aiohttp_client = Clients().get_http_client().get_http_client()
+mongo_client = Clients().get_mongo_client()
 
 logger = get_logger("earnings_updating")
 
@@ -38,6 +39,7 @@ class EarningsUpdating:
 
     @staticmethod
     async def update_all_users_earnings():
+        await mongo_client.initialize()
         users = await UserMetadata.find_all().to_list()
         for user in users:
             user_balance = (

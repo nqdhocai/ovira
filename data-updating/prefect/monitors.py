@@ -29,7 +29,7 @@ async def aggregate_data():
 async def update_strategy_for_all_vaults():
     logger.info("Starting strategy update task...")
     try:
-        await StrategyUpdating.update_all_vault_strategy(datetime.utcnow())
+        await StrategyUpdating.update_all_vault_strategy(datetime(2025, 9, 15, 6, 0, 0))
         logger.info("Strategy update task completed successfully.")
     except Exception as e:
         logger.error(f"Strategy update task failed: {e}")

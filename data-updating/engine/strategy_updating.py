@@ -9,6 +9,7 @@ from mongo.schemas import StrategyInfo, VaultsMetadata
 from services.http_request import HTTPMethod
 
 aiohttp_client = Clients().get_http_client().get_http_client()
+mongo_client = Clients().get_mongo_client()
 
 logger = get_logger("strategy_updating")
 
@@ -70,6 +71,7 @@ class StrategyUpdating:
 
     @staticmethod
     async def update_all_vault_strategy(update_time: datetime):
+        await mongo_client.initialize()
         logger.info(f"Starting update of all vault strategies at {update_time}")
         vaults = await VaultsMetadata.find_all().to_list()
         CONCURRENCY = 5
