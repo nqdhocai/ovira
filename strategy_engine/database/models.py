@@ -100,7 +100,8 @@ class PoolSnapshot(Document):
         max_gap = timedelta(hours=max_gap_hours)
 
         def value_at(target: datetime, series: list[float]) -> float | None:
-            """Return value at 'target' timestamp by:
+            """
+            Return value at 'target' timestamp by:
             - Linear interpolation if bracketed by 2 points and distance doesn't exceed max_gap;
             - Otherwise, use 'nearest left' value if distance <= max_gap;
             - Otherwise, None.

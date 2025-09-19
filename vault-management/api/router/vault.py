@@ -3,7 +3,13 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 
-from backend.vault import VaultOperations, VaultsData, VaultStrategyUpdatedInfo
+from backend.user import UserOperations, VaultAPY
+from backend.vault import (
+    VaultOperations,
+    VaultsData,
+    VaultStatistics,
+    VaultStrategyUpdatedInfo,
+)
 from hooks.error import ResourceNotFound
 from hooks.success import SuccessResponse
 from mongo.schemas import PoolAllocation, ReasoningTrace
@@ -82,7 +88,7 @@ async def get_vault_apy(vault_name: str):
     - Errors: 404 if vault not found, 500 on other failures.
     """
     try:
-        return await VaultOperations.get_vault_apy(vault_name)
+        return await UserOperations.get_vault_apy(vault_name)
     except ResourceNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -215,3 +221,24 @@ async def get_existing_vaults():
     (name: str, asset: Literal["USDT", "USDC"], risk_label: Literal["conservative", "balanced", "aggressive"], address: str, update_frequency: float)
     """
     return await VaultOperations.get_existing_vaults()
+
+
+@router.get("/all_vault_statistics", response_model=VaultStatistics)
+async def get_all_vaults_statistics():
+    """
+    Get statistics of all vaults in real time:
+
+    Returns:
+        `VaultStatistics`:
+            `total_tvls (int)`: the sum of total tvls along all tvls
+            `creators (int)`: the number of vault creators
+    """
+    return await VaultOperations.get_all_vault_statistics()
+
+
+@router.get("/vault_leaderboards", response_model=dict[int, VaultAPY])
+async def get_vault_leaderboards():
+    """
+    Return all vault names with their respective APYs, sorted from top to bottom
+    """
+    return await UserOperations.get_vault_ranking()
