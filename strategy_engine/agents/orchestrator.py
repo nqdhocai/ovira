@@ -8,18 +8,19 @@ import urllib.parse
 from dataclasses import dataclass
 from typing import Any, Literal
 
-# App-specific deps
-from agents.model import get_llm_model
-from agents.models import AgentMessage, FinalStrategy, Strategy, TraceItem
-from config.settings import mcp_config
 from dotenv import load_dotenv
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.prompts import ChatPromptTemplate
 from langchain.tools import StructuredTool
 from langchain_core.prompts import MessagesPlaceholder
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from prompts.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
 from pydantic import BaseModel, Field
+
+# App-specific deps
+from agents.model import get_llm_model
+from agents.models import AgentMessage, FinalStrategy, Strategy, TraceItem
+from config.settings import mcp_config
+from prompts.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
 from utils.helpers import extract_json_blocks, json_to_key_value_str
 from utils.singleton_base import SingletonBase
 
@@ -119,11 +120,13 @@ class PromptBuilder:
             coral_tools_description=coral_tools_description,
         )
         system_text = PromptBuilder._escape_curly(system_text_raw)
-        return ChatPromptTemplate.from_messages([
-            ("system", system_text),
-            ("human", "{user_input}"),
-            MessagesPlaceholder(variable_name="agent_scratchpad"),
-        ])
+        return ChatPromptTemplate.from_messages(
+            [
+                ("system", system_text),
+                ("human", "{user_input}"),
+                MessagesPlaceholder(variable_name="agent_scratchpad"),
+            ]
+        )
 
 
 # =========================
@@ -196,15 +199,17 @@ class ResultProcessor:
             content_escaped = m.group("content")
             # content HTML-escaped → unescape
             content_unescaped = html.unescape(content_escaped)
-            out.append({
-                "message_id": msg_id,
-                "thread_id": thread_id,
-                "sender": sender,
-                "timestamp_ms": ts,
-                "content_unescaped": content_unescaped,
-                "raw": m.group(0),
-                "json_payload": self._safe_json_loads(content_unescaped),
-            })
+            out.append(
+                {
+                    "message_id": msg_id,
+                    "thread_id": thread_id,
+                    "sender": sender,
+                    "timestamp_ms": ts,
+                    "content_unescaped": content_unescaped,
+                    "raw": m.group(0),
+                    "json_payload": self._safe_json_loads(content_unescaped),
+                }
+            )
         return out
 
     def _map_sender_to_role(
@@ -233,14 +238,15 @@ class ResultProcessor:
         """
         trace: list[TraceItem] = []
         steps = agent_payload.get("intermediate_steps", [])
+        logger.info(f"These are the steps: {steps}")
         verifier_timeout_seen = False
 
         for step in steps:
             if not (isinstance(step, (list, tuple)) and len(step) >= 2):
                 continue
+            logger.debug(f"This is a step: {step}")
 
             tool_act, observation = step[0], step[1]
-
             if include_tool_calls:
                 try:
                     tool_name = getattr(tool_act, "tool", None)
@@ -266,6 +272,7 @@ class ResultProcessor:
 
             if isinstance(observation, str):
                 for msg in self._extract_resolved_blocks(observation):
+                    logger.debug(f"Message: {msg}")
                     role = self._map_sender_to_role(msg["sender"])
                     content_raw = msg["content_unescaped"]
                     payload = msg["json_payload"]
@@ -305,6 +312,7 @@ class ResultProcessor:
 
         if "output" in agent_payload:
             content = agent_payload["output"]
+            logger.debug(f"This is the content: {content}")
             try:
                 json_blocks = extract_json_blocks(content)
                 if json_blocks:
@@ -402,10 +410,12 @@ class OrchestratorAgent(SingletonBase):
             raise RuntimeError("Agent not initialized. Call initialize() first.")
         user_input = self._prepare_user_input(pools_data, policy, risk)
 
-        result = await self.executor.ainvoke({
-            "user_input": user_input,
-            "agent_scratchpad": [],
-        })
+        result = await self.executor.ainvoke(
+            {
+                "user_input": user_input,
+                "agent_scratchpad": [],
+            }
+        )
         return self.result_processor.process_result(result)
 
     def _prepare_user_input(
