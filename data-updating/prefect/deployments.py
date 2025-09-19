@@ -60,7 +60,7 @@ async def deploy_flow():
                 name="vaults-strategy-updater",
                 tags=["vaults", "strategy", "updater"],
                 description="Updates strategies for all vaults.",
-                schedule=CronSchedule(cron="0 * * * *"),  # Every hour
+                schedule=CronSchedule(cron="0 */3 * * *"),  # Every 3 hours
             )
         )
         user_earnings_updater_deployment = await user_earnings_updater.to_deployment(

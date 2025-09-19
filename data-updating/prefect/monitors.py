@@ -64,7 +64,7 @@ async def defi_data_pipeline():
 
 @flow(
     name="Vaults Strategy Updater",
-    description="Updates strategies for all vaults every 1h.",
+    description="Updates strategies for all vaults every 3h.",
 )
 async def vaults_strategy_updater():
     try:
