@@ -9,7 +9,7 @@ services:
     image: ovira/strategy-engine:latest
     # NOTE: Temporarily expose port
     ports:
-      - 8000:8000
+      - 24141:8000
     restart: unless-stopped
     networks:
       - strategy-provider-app
