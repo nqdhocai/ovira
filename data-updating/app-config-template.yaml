@@ -1,11 +1,11 @@
 mongo:
-  uri: "your-mongo-db-uri"
-  db_name: "database"
+  uri: "mongodb://131.153.202.197:27777/"
+  db_name: "defi_agent_db"
 
 strategy_agent:
-  url: "your-strategy-agent-url"
-  port: "your-strategy-agent-port"
+  url: "131.153.202.197"
+  port: "24141"
 
 vault_management:
-  url: "your-vault-management-url"
-  port: "your-vault-management-port"
+  url: "131.153.239.187"
+  port: "8124"
