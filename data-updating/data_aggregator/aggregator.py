@@ -26,7 +26,7 @@ async def get_pool_charts_30d(pool_address: str) -> list[PoolCharts]:
         response = await defillama.async_get_request(url=url)
         charts_data = response["data"]
         # Filter data for the last 30 days
-        last_30d = datetime.now(timezone.utc) - timedelta(days=30)
+        last_30d = datetime.utcnow() - timedelta(days=30)
         pool_charts_30d: list[PoolCharts] = []
         for item in charts_data:
             # Parse ISO format datetime string

@@ -36,7 +36,7 @@ class VaultStatistics(BaseModel):
 
 
 def get_current_target_time() -> datetime:
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     now = now.replace(minute=0, second=0, microsecond=0)
     if now.hour % 6 != 0:
         now = now - timedelta(hours=now.hour % 6)

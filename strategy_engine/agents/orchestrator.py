@@ -337,6 +337,7 @@ class ResultProcessor:
                     tool_output=None,
                 )
             )
+        logger.debug(f"Trace: {trace}")
 
         return trace
 
