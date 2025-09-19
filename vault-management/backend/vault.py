@@ -35,11 +35,6 @@ class VaultStatistics(BaseModel):
     num_creators: int
 
 
-class VaultAPY(BaseModel):
-    vault_name: str
-    apy: float
-
-
 def get_current_target_time() -> datetime:
     now = datetime.now(timezone.utc)
     now = now.replace(minute=0, second=0, microsecond=0)
@@ -102,22 +97,6 @@ class VaultOperations:
             vault.policy_prompt = new_policy_prompt
         _ = await vault.save()
         logger.info(f"Vault {vault_name} updated successfully.")
-
-    @staticmethod
-    async def get_vault_apy(vault_name: str):
-        vault = await VaultsMetadata.find_one(VaultsMetadata.name == vault_name)
-        if not vault:
-            logger.error(f"Vault {vault_name} not found.")
-            raise ResourceNotFound(f"Vault with name {vault_name} not found.")
-        latest_strategy = (
-            await VaultsStrategy.find(VaultsStrategy.vault.id == vault.id)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
-            .sort(-VaultsStrategy.update_at)  # pyright: ignore[reportOperatorIssue, reportUnknownArgumentType]
-            .first_or_none()
-        )
-        if not latest_strategy:
-            logger.warning(f"No strategy data found for vault {vault_name}.")
-            return 0.0
-        return latest_strategy.apy
 
     @staticmethod
     async def get_vault_tvl(vault_name: str) -> float:
@@ -299,23 +278,6 @@ class VaultOperations:
         for vault_name in all_vault_names:
             sum_tvls += await VaultOperations.get_vault_tvl(vault_name)
         return VaultStatistics(total_tvls=sum_tvls, num_creators=number_of_users)
-
-    @staticmethod
-    async def get_vault_ranking() -> dict[int, VaultAPY]:
-        all_vault_names = [
-            vault_metadata.name
-            for vault_metadata in await VaultsMetadata.find_all().to_list()
-        ]
-        list_vaults_with_apys: list[VaultAPY] = [
-            VaultAPY(
-                vault_name=vault_name,
-                apy=await VaultOperations.get_vault_apy(vault_name),
-            )
-            for vault_name in all_vault_names
-        ]
-        list_vaults_with_apys.sort(key=lambda x: x.apy, reverse=True)
-        result = {i + 1: vault_apy for i, vault_apy in enumerate(list_vaults_with_apys)}
-        return result
 
     @staticmethod
     async def get_strategy_ai_reasoning_trace(vault_name: str) -> list[ReasoningTrace]:

@@ -19,8 +19,14 @@ logger = get_logger("user_operations")
 
 class VaultData(BaseModel):
     vault_name: str
-    apy: str
-    tvl: str
+    rank: int
+    apy: float
+    tvl: float
+
+
+class VaultAPY(BaseModel):
+    vault_name: str
+    apy: float
 
 
 class UserOperations:
@@ -38,6 +44,22 @@ class UserOperations:
             _ = await new_user.save()
             logger.info(f"User with wallet {wallet_address} created successfully.")
             return new_user
+
+    @staticmethod
+    async def get_vault_apy(vault_name: str):
+        vault = await VaultsMetadata.find_one(VaultsMetadata.name == vault_name)
+        if not vault:
+            logger.error(f"Vault {vault_name} not found.")
+            raise ResourceNotFound(f"Vault with name {vault_name} not found.")
+        latest_strategy = (
+            await VaultsStrategy.find(VaultsStrategy.vault.id == vault.id)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
+            .sort(-VaultsStrategy.update_at)  # pyright: ignore[reportOperatorIssue, reportUnknownArgumentType]
+            .first_or_none()
+        )
+        if not latest_strategy:
+            logger.warning(f"No strategy data found for vault {vault_name}.")
+            return 0.0
+        return latest_strategy.apy
 
     @staticmethod
     async def get_user_balance_nav(user_wallet: str, vault_name: str) -> float:
@@ -135,6 +157,23 @@ class UserOperations:
         )
 
     @staticmethod
+    async def get_vault_ranking() -> dict[int, VaultAPY]:
+        all_vault_names = [
+            vault_metadata.name
+            for vault_metadata in await VaultsMetadata.find_all().to_list()
+        ]
+        list_vaults_with_apys: list[VaultAPY] = [
+            VaultAPY(
+                vault_name=vault_name,
+                apy=await UserOperations.get_vault_apy(vault_name),
+            )
+            for vault_name in all_vault_names
+        ]
+        list_vaults_with_apys.sort(key=lambda x: x.apy, reverse=True)
+        result = {i + 1: vault_apy for i, vault_apy in enumerate(list_vaults_with_apys)}
+        return result
+
+    @staticmethod
     async def get_all_vaults(user_wallet: str) -> dict[int, VaultData]:
         user = await UserMetadata.find_one(UserMetadata.wallet_address == user_wallet)
         if not user:
@@ -162,7 +201,6 @@ class UserOperations:
             vault_strategy = (
                 await VaultsStrategy.find(
                     And(
-                        VaultsStrategy.user.id == user.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportUnknownArgumentType, reportAttributeAccessIssue]
                         VaultsStrategy.vault.id == vault.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
                     )
                 )
@@ -174,21 +212,28 @@ class UserOperations:
             vault_history = (
                 await VaultsHistory.find(
                     And(
-                        VaultsHistory.user.id == user.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportUnknownArgumentType, reportAttributeAccessIssue]
                         VaultsHistory.vault.id == vault.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
                     )
                 )
                 .sort(-VaultsHistory.update_at)  # pyright: ignore[reportOperatorIssue, reportUnknownArgumentType]
                 .first_or_none()
             )
+            vault_rank = await UserOperations.get_vault_ranking()
+            rank: int = 0
+            for key, value in vault_rank.items():
+                if value.vault_name == vault.name:
+                    rank = key
+            if rank == 0:
+                continue
             if not vault_history:
                 continue
             list_vault_data.append(
                 VaultData(
-                    vault_name=user_balance.vault.name,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
-                    apy=vault_strategy.vault.apy,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
-                    tvl=vault_history.vault.tvl,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportUnknownArgumentType, reportAttributeAccessIssue]
+                    vault_name=vault.name,
+                    rank=rank,
+                    apy=vault_strategy.apy,
+                    tvl=vault_history.tvl,
                 )
             )
         list_vault_data.sort(key=lambda x: x.tvl, reverse=True)
-        return {i: vault_data for i, vault_data in enumerate(list_vault_data)}
+        return {i + 1: vault_data for i, vault_data in enumerate(list_vault_data)}

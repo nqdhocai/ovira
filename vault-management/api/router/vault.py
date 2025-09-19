@@ -3,8 +3,8 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 
+from backend.user import UserOperations, VaultAPY
 from backend.vault import (
-    VaultAPY,
     VaultOperations,
     VaultsData,
     VaultStatistics,
@@ -88,7 +88,7 @@ async def get_vault_apy(vault_name: str):
     - Errors: 404 if vault not found, 500 on other failures.
     """
     try:
-        return await VaultOperations.get_vault_apy(vault_name)
+        return await UserOperations.get_vault_apy(vault_name)
     except ResourceNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -241,4 +241,4 @@ async def get_vault_leaderboards():
     """
     Return all vault names with their respective APYs, sorted from top to bottom
     """
-    return await VaultOperations.get_vault_ranking()
+    return await UserOperations.get_vault_ranking()

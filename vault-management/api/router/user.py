@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from fastapi import APIRouter, HTTPException
 
 from backend.user import UserOperations, VaultData
@@ -95,10 +93,16 @@ async def update_user_balance_earnings(
         )
 
 
-@router.get("/personal_vaults", response_model=dict[str, VaultData])
+@router.get("/personal_vaults", response_model=dict[int, VaultData])
 async def get_all_personal_vaults_for_a_user(user_wallet: str):
     """
-    Whatever
+    Get all personal vault for a user wallet with additional information.
+
+    Args:
+        `user_wallet (str)`: user wallet address
+
+    Returns:
+        `dict[int, VaultData]`: information about each vault that the user is having, ranked by tvl from highest to lower
     """
     try:
         return await UserOperations.get_all_vaults(user_wallet)
@@ -107,5 +111,5 @@ async def get_all_personal_vaults_for_a_user(user_wallet: str):
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Unexpected error when trying to get personal vault: {str(e)}",
+            detail=f"Unexpected error when trying to get personal vault: {e}",
         )
