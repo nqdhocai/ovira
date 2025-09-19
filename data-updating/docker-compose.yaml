@@ -2,14 +2,15 @@ version: '3.8'
 
 services:
   # PostgreSQL Database for Prefect and the application
-  postgres:
+  postgres-ovira-test:
     image: postgres:14
+    container_name: postgres-ovira-test
     environment:
       POSTGRES_USER: prefect
       POSTGRES_PASSWORD: prefect
       POSTGRES_DB: prefect
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_ovira_test:/var/lib/postgresql/data-ovira-test
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U prefect"]
       interval: 5s
@@ -19,12 +20,13 @@ services:
       - prefect-network
 
   # Redis for Prefect messaging and caching
-  redis:
+  redis-ovira-test:
     image: redis:7
     volumes:
-      - redis_data:/data/redis_data/
+      - redis_data_ovira_test:/data/redis_data/ovira-test/
+    container_name: redis-ovira-test
     ports:
-      - 6379:6379
+      - 6380:6379
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping"]
       interval: 5s
@@ -36,12 +38,12 @@ services:
   prefect-migration:
     image: prefecthq/prefect:3-latest
     depends_on:
-      postgres:
+      postgres-ovira-test:
         condition: service_healthy
-      redis:
+      redis-ovira-test:
         condition: service_healthy
     environment:
-      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect@postgres:5432/prefect
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect@postgres-ovira-test:5432/prefect
     command: >
       sh -c "
         echo 'Running database migrations...' &&
@@ -52,29 +54,30 @@ services:
       - prefect-network
     restart: "no"
 
-  
   prefect-server:
     image: prefecthq/prefect:3-latest
     depends_on:
       prefect-migration:
         condition: service_completed_successfully
     environment:
-      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect@postgres:5432/prefect
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect@postgres-ovira-test:5432/prefect
       PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST}
       PREFECT_MESSAGING_BROKER: prefect_redis.messaging
       PREFECT_MESSAGING_CACHE: prefect_redis.messaging
-      PREFECT_REDIS_MESSAGING_HOST: redis
+      PREFECT_REDIS_MESSAGING_HOST: redis-ovira-test
       PREFECT_REDIS_MESSAGING_PORT: 6379
       PREFECT_REDIS_MESSAGING_DB: 0
-    command: prefect server start --no-services
+    command: prefect server start --no-services --host 0.0.0.0
     ports:
-      - "4200:4200"  
+      - "4200:4200"
     networks:
       - prefect-network
-    env_file:
-      - .env
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import requests; requests.get(\"http://localhost:4200/api/health\").raise_for_status()' || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'python -c ''import requests; requests.get("http://localhost:4200/api/health").raise_for_status()'' || exit 1',
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -86,19 +89,15 @@ services:
       prefect-server:
         condition: service_healthy
     environment:
-      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect@postgres:5432/prefect
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect@postgres-ovira-test:5432/prefect
       PREFECT_MESSAGING_BROKER: prefect_redis.messaging
       PREFECT_MESSAGING_CACHE: prefect_redis.messaging
-      PREFECT_REDIS_MESSAGING_HOST: redis
+      PREFECT_REDIS_MESSAGING_HOST: redis-ovira-test
       PREFECT_REDIS_MESSAGING_PORT: 6379
       PREFECT_REDIS_MESSAGING_DB: 0
     command: prefect server services start
     networks:
       - prefect-network
-
-
-
-
 
   # Prefect worker that runs your flows
   prefect-worker:
@@ -111,8 +110,6 @@ services:
     command: prefect worker start --pool ovira-pool
     networks:
       - prefect-network
-
-
 
   # Service to deploy flows. Runs once and exits.
   prefect-app:
@@ -131,9 +128,11 @@ services:
       - prefect-network
     restart: unless-stopped
 
+
 volumes:
-  postgres_data:
-  redis_data:
+  postgres_data_ovira_test:
+  redis_data_ovira_test:
+
 
 networks:
   prefect-network:
