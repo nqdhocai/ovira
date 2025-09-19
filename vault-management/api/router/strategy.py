@@ -1,5 +1,3 @@
-from typing import Any
-
 from fastapi import APIRouter, HTTPException
 
 from backend.strategy import StrategyOperations

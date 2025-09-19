@@ -6,7 +6,6 @@ from configs import get_logger
 from hooks.error import ResourceNotFound
 from llm.strategy_updated import get_strategy_changes
 from mongo.schemas import (
-    PoolAllocation,
     PoolsSnapshot,
     StrategyInfo,
     UpdatedInfo,

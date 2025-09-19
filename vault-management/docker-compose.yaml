@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   vault-management:
@@ -8,6 +8,6 @@ services:
     container_name: vault-management
     restart: always
     ports:
-      - "8000:8000"
+      - "8124:8000"
     env_file:
       - .env

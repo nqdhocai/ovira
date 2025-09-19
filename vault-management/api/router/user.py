@@ -2,7 +2,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 
-from backend.user import UserOperations
+from backend.user import UserOperations, VaultData
 from hooks.error import ResourceNotFound
 from hooks.success import SuccessResponse
 
@@ -92,4 +92,20 @@ async def update_user_balance_earnings(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to update user earnings: {str(e)}"
+        )
+
+
+@router.get("/personal_vaults", response_model=dict[str, VaultData])
+async def get_all_personal_vaults_for_a_user(user_wallet: str):
+    """
+    Whatever
+    """
+    try:
+        return await UserOperations.get_all_vaults(user_wallet)
+    except ResourceNotFound as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected error when trying to get personal vault: {str(e)}",
         )

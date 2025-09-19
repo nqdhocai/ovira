@@ -156,7 +156,7 @@ class UserBalanceHistory(Document):
     id: UUID
     user: Link[UserMetadata]
     vault: Link[VaultsMetadata]
-    remaining_banlance: float
+    remaining_balance: float
     earnings: float
     update_at: datetime
 

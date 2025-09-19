@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Literal
 from uuid import UUID
 
 from beanie import Document, Link
@@ -156,7 +156,7 @@ class UserBalanceHistory(Document):
     id: UUID
     user: Link[UserMetadata]
     vault: Link[VaultsMetadata]
-    remaining_banlance: float
+    remaining_balance: float
     earnings: float
     update_at: datetime
 

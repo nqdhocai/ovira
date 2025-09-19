@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from beanie.operators import GTE, LTE, And
@@ -9,7 +9,6 @@ from hooks.error import ResourceNotFound
 from mongo.schemas import (
     PoolAllocation,
     ReasoningTrace,
-    UpdatedInfo,
     UserMetadata,
     VaultsHistory,
     VaultsMetadata,
@@ -31,8 +30,18 @@ class VaultsData(BaseModel):
     update_frequency: float | None = None
 
 
+class VaultStatistics(BaseModel):
+    total_tvls: float
+    num_creators: int
+
+
+class VaultAPY(BaseModel):
+    vault_name: str
+    apy: float
+
+
 def get_current_target_time() -> datetime:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     now = now.replace(minute=0, second=0, microsecond=0)
     if now.hour % 6 != 0:
         now = now - timedelta(hours=now.hour % 6)
@@ -66,7 +75,7 @@ class VaultOperations:
                 f"{vault_name}-{owner_wallet_address}-{created_time}-{asset}"
             ),
             name=vault_name,
-            owner=owner,
+            owner=owner,  # pyright: ignore[reportArgumentType]
             asset=asset,
             risk_label=risk_label,
             update_frequency=update_frequency,
@@ -101,8 +110,8 @@ class VaultOperations:
             logger.error(f"Vault {vault_name} not found.")
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
         latest_strategy = (
-            await VaultsStrategy.find(VaultsStrategy.vault.id == vault.id)
-            .sort(-VaultsStrategy.update_at)
+            await VaultsStrategy.find(VaultsStrategy.vault.id == vault.id)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
+            .sort(-VaultsStrategy.update_at)  # pyright: ignore[reportOperatorIssue, reportUnknownArgumentType]
             .first_or_none()
         )
         if not latest_strategy:
@@ -117,8 +126,8 @@ class VaultOperations:
             logger.error(f"Vault {vault_name} not found.")
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
         latest_history = (
-            await VaultsHistory.find(VaultsHistory.vault.id == vault.id)
-            .sort(-VaultsHistory.update_at)
+            await VaultsHistory.find(VaultsHistory.vault.id == vault.id)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
+            .sort(-VaultsHistory.update_at)  # pyright: ignore[reportOperatorIssue, reportUnknownArgumentType]
             .first_or_none()
         )
         if not latest_history:
@@ -139,7 +148,7 @@ class VaultOperations:
         strategies = (
             await VaultsStrategy.find(
                 And(
-                    VaultsStrategy.vault.id == vault.id,
+                    VaultsStrategy.vault.id == vault.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
                     GTE(VaultsStrategy.update_at, start_time),
                     LTE(VaultsStrategy.update_at, end_time),
                 ),
@@ -182,7 +191,7 @@ class VaultOperations:
         histories = (
             await VaultsHistory.find(
                 And(
-                    VaultsHistory.vault.id == vault.id,
+                    VaultsHistory.vault.id == vault.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
                     GTE(VaultsHistory.update_at, start_time),
                     LTE(VaultsHistory.update_at, end_time),
                 ),
@@ -219,13 +228,13 @@ class VaultOperations:
             logger.error(f"Vault {vault_name} not found.")
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
         latest_strategy = (
-            await VaultsStrategy.find(VaultsStrategy.vault.id == vault.id)
-            .sort(-VaultsStrategy.update_at)
+            await VaultsStrategy.find(VaultsStrategy.vault.id == vault.id)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
+            .sort(-VaultsStrategy.update_at)  # pyright: ignore[reportOperatorIssue, reportUnknownArgumentType]
             .first_or_none()
         )
         if not latest_strategy:
             logger.warning(f"No strategy data found for vault {vault_name}.")
-            return {}
+            return []
         allocations = latest_strategy.strategy.strategy.allocations
         return allocations
 
@@ -242,7 +251,7 @@ class VaultOperations:
         updates = (
             await VaultsUpdated.find(
                 And(
-                    VaultsUpdated.vault.id == vault.id,
+                    VaultsUpdated.vault.id == vault.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportUnknownArgumentType, reportAttributeAccessIssue]
                     GTE(VaultsUpdated.update_at, start_time),
                     LTE(VaultsUpdated.update_at, end_time),
                 ),
@@ -271,13 +280,42 @@ class VaultOperations:
         return [
             VaultsData(
                 name=vault.name,
-                asset=vault.asset,
+                asset=vault.asset,  # pyright: ignore[reportArgumentType]
                 risk_label=vault.risk_label,
-                address=vault.address,
+                address=vault.address,  # pyright: ignore[reportArgumentType]
                 update_frequency=vault.update_frequency,
             )
             for vault in vaults
         ]
+
+    @staticmethod
+    async def get_all_vault_statistics() -> VaultStatistics:
+        number_of_users = len(await UserMetadata.find_all().to_list())
+        all_vault_names = [
+            vault_metadata.name
+            for vault_metadata in await VaultsMetadata.find_all().to_list()
+        ]
+        sum_tvls = 0
+        for vault_name in all_vault_names:
+            sum_tvls += await VaultOperations.get_vault_tvl(vault_name)
+        return VaultStatistics(total_tvls=sum_tvls, num_creators=number_of_users)
+
+    @staticmethod
+    async def get_vault_ranking() -> dict[int, VaultAPY]:
+        all_vault_names = [
+            vault_metadata.name
+            for vault_metadata in await VaultsMetadata.find_all().to_list()
+        ]
+        list_vaults_with_apys: list[VaultAPY] = [
+            VaultAPY(
+                vault_name=vault_name,
+                apy=await VaultOperations.get_vault_apy(vault_name),
+            )
+            for vault_name in all_vault_names
+        ]
+        list_vaults_with_apys.sort(key=lambda x: x.apy, reverse=True)
+        result = {i: vault_apy for i, vault_apy in enumerate(list_vaults_with_apys)}
+        return result
 
     @staticmethod
     async def get_strategy_ai_reasoning_trace(vault_name: str) -> list[ReasoningTrace]:
@@ -285,8 +323,8 @@ class VaultOperations:
         if not vault:
             raise ResourceNotFound(f"Vault with name {vault_name} not found.")
         strategy = (
-            await VaultsStrategy.find(VaultsStrategy.vault.id == vault.id)
-            .sort(-VaultsStrategy.update_at)
+            await VaultsStrategy.find(VaultsStrategy.vault.id == vault.id)  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
+            .sort(-VaultsStrategy.update_at)  # pyright: ignore[reportOperatorIssue]
             .first_or_none()
         )
         if not strategy:
