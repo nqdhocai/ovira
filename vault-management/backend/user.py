@@ -186,18 +186,6 @@ class UserOperations:
             vault = await VaultsMetadata.find_one(VaultsMetadata.name == vault_name)
             if not vault:
                 continue
-            user_balance = (
-                await UserBalanceHistory.find(
-                    And(
-                        UserBalanceHistory.user.id == user.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportUnknownArgumentType, reportAttributeAccessIssue]
-                        UserBalanceHistory.vault.id == vault.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
-                    )
-                )
-                .sort(-UserBalanceHistory.update_at)  # pyright: ignore[reportOperatorIssue, reportUnknownArgumentType]
-                .first_or_none()
-            )
-            if not user_balance:
-                continue
             vault_strategy = (
                 await VaultsStrategy.find(
                     And(
