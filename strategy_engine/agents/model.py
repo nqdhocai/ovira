@@ -1,6 +1,5 @@
-from langchain.chat_models import init_chat_model
-
 from config.settings import agents_config
+from langchain.chat_models import init_chat_model
 
 _llm_model = None
 
