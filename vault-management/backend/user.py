@@ -181,7 +181,7 @@ class UserOperations:
         all_vault_names = [
             vault.name
             for vault in await VaultsMetadata.find(
-                VaultsMetadata.owner.id == user.id
+                VaultsMetadata.owner.id == user.id  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
             ).to_list()
         ]
         list_vault_data: list[VaultData] = []
@@ -197,11 +197,6 @@ class UserOperations:
                 .sort(-VaultsStrategy.update_at)  # pyright: ignore[reportOperatorIssue, reportUnknownArgumentType]
                 .first_or_none()
             )
-            if not vault_strategy:
-                logger.warning(
-                    f"No strategy data found for vault {vault_name}, skipping..."
-                )
-                continue
             vault_history = (
                 await VaultsHistory.find(
                     VaultsHistory.vault.id == vault.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
@@ -220,7 +215,7 @@ class UserOperations:
                 VaultData(
                     vault_name=vault.name,
                     rank=rank,
-                    apy=vault_strategy.apy,
+                    apy=vault_strategy.apy if vault_strategy else 0.0,
                     tvl=vault_history.tvl if vault_history else 0.0,
                 )
             )
