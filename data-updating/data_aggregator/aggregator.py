@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import datetime, timedelta, timezone
 
 from pydantic import BaseModel
@@ -20,6 +21,12 @@ mongo_client = Clients.get_mongo_client()
 logger = get_logger("defillama_stable_solana_pools")
 
 
+def parse_iso_datetime_naive(date_str: str) -> datetime:
+    if date_str.endswith("Z"):
+        date_str = date_str.replace("Z", "+00:00")
+    return datetime.fromisoformat(date_str).replace(tzinfo=None)
+
+
 async def get_pool_charts_30d(pool_address: str) -> list[PoolCharts]:
     url = f"https://yields.llama.fi/chart/{pool_address}"
     try:
@@ -27,10 +34,12 @@ async def get_pool_charts_30d(pool_address: str) -> list[PoolCharts]:
         charts_data = response["data"]
         # Filter data for the last 30 days
         last_30d = datetime.utcnow() - timedelta(days=30)
+        # with open(f"debug_charts_{pool_address}.json", "w") as f:
+        #     json.dump(charts_data, f)
         pool_charts_30d: list[PoolCharts] = []
         for item in charts_data:
             # Parse ISO format datetime string
-            ts = datetime.fromisoformat(item["timestamp"].replace("Z", "+00:00"))
+            ts = parse_iso_datetime_naive(item["timestamp"])
             if ts >= last_30d:
                 pool_charts_30d.append(
                     PoolCharts(
