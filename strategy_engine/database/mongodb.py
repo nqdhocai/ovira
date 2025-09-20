@@ -85,7 +85,7 @@ class MongoDB(SingletonBase):
         ]
 
     async def insert_agent_messages(self, messages: list[AgentMessages]) -> None:
-        await AgentMessages.insert_many(messages)
+        _ = await AgentMessages.insert_many(messages)
 
     async def get_reasoning_trace(self, thread_id: str) -> list[AgentMessages]:
         return (
