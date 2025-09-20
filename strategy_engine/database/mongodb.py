@@ -14,6 +14,8 @@ from pymongo import ASCENDING, DESCENDING, AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 from utils.singleton_base import SingletonBase
 
+TVL_THRESHOLD = 50_000
+
 
 class MongoDB(SingletonBase):
     def __init__(self):
@@ -81,7 +83,7 @@ class MongoDB(SingletonBase):
             and r.apy is not None
             and r.apy > 0
             and r.tvlUsd is not None
-            and r.tvlUsd > 20_000
+            and r.tvlUsd >= TVL_THRESHOLD
         ]
 
     async def insert_agent_messages(self, messages: list[AgentMessages]) -> None:

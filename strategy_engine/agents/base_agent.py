@@ -74,7 +74,7 @@ class BaseAgent:
             tools=combined_tools,
             verbose=True,
             handle_parsing_errors=True,
-            max_iterations=10,
+            max_iterations=50,
             return_intermediate_steps=True,
         )
 

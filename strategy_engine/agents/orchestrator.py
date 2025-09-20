@@ -226,7 +226,7 @@ class OrchestratorAgent(SingletonBase):
             tools=prepared_tools,
             verbose=True,
             return_intermediate_steps=True,
-            max_iterations=10,
+            max_iterations=50,
         )
 
     async def execute_strategy(
