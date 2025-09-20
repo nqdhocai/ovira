@@ -1,11 +1,11 @@
 mongo:
-  uri: "mongodb://131.153.202.197:27777/"
+  uri: ""
   db_name: "defi_agent_db"
 
 strategy_agent:
-  url: "131.153.202.197"
+  url: "localhost"
   port: "24141"
 
 vault_management:
-  url: "131.153.239.187"
+  url: "localhost"
   port: "8124"
