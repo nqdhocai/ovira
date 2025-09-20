@@ -50,15 +50,16 @@ Task: from feature_cards + policy → PlanCandidate.
 Update with Critic feedback.
 
 Output:
-- status: DRAFT|FIXED|FINAL
+- status: DRAFT|FIXED
 - rationale: string  
 - allocations: pool_name, weight_pct
 
 Constraints:  
-- weight sum ≈ 100.  
+- weight sum MUST = 100.  
 - Obey policy (n_pools, sigma_max, tvl_min, weight_max).  
 - If impossible: still valid JSON, note compromises.  
 - Use Critic guidance in adjustments.  
+- MUST use "send_message" to send it to Verifier to verify.
 """
 )
 
@@ -70,7 +71,7 @@ ROLE=Critic.
 Task: review PlanCandidate, highlight issues, create guild and send it to Planner.  
 
 Output:
-- status: APPROVED|REJECTED|NEEDS_CHANGES
+- status: APPROVED|NEEDS_CHANGES
 - critic_notes: [string] 
 - required_changes: field_path, reason, fix, severity  
 - guidance: [string]  
@@ -79,8 +80,8 @@ Constraints:
 - Don’t edit plan directly.  
 - Link issues to specific fields or Verifier findings.  
 - When needed to improve plan, provide clear, actionable guidance
-- MUST use "send_message" to send it to Planner.
-- "critic_notes" should 
+- MUST use "send_message" to send it to Planner if NOT APPROVED.
+- If APPROVED → send to Orchestrator with "send_message".
 """
 )
 
@@ -91,40 +92,39 @@ VERIFIER_PROMPT = (
 ROLE=Verifier (Schema+Policy+Trace).  
 Task: wait for mention from other agents and just validate PlanCandidate then point out what is not reasonable; needs to be edited; then send it to Critic.
 Output:
-- status: VERIFIED|REJECTED
-- violations: code, detail, location  
+- status: APPROVED|NEEDS_CHANGES
+- violations: code, detail, location,... (details where the error is and why it is)
 - scorecard: schema, policy, trace (0..1)  
-- errors: [string]|null  
 
-Constraints:  
-- If status=REJECTED → must list violations.  
-- If normalized (e.g., weights) → note in plan.  
+Constraints:
+- If status=NEEDS_CHANGES → must list violations with details.
+- If normalized (e.g., weights) → note in plan.
 - MUST use "send_message" to send it to Critic.
 """
 )
 
 # Final Executor Agent
-FINAL_PROMPT = (
-    COMMON_LOOP
-    + """
-ROLE = Finalizer Agent  
+# FINAL_PROMPT = (
+#     COMMON_LOOP
+#     + """
+# ROLE = Finalizer Agent
 
-Task: Aggregate the validated outputs from Planner, Verifier, and Critic, normalize allocations if needed, and produce a single JSON object that contains the final strategy.
+# Task: Aggregate the validated outputs from Planner, Verifier, and Critic, normalize allocations if needed, and produce a single JSON object that contains the final strategy.
 
-Output:
-- strategy:  
-    - risk_label: CONSERVATIVE|BALANCED|AGGRESSIVE
-    - allocations:  
-        - pool_name: string  
-        - weight_pct: number  
+# Output:
+# - strategy:
+#     - risk_label: CONSERVATIVE|BALANCED|AGGRESSIVE
+#     - allocations:
+#         - pool_name: string
+#         - weight_pct: number
 
-Constraints:
-    - The sum of all weight_pct must equal 100 (±1e-6). If not, normalize and add a note in reasoning_trace.
-    - Include only pools with verified=true.
-    - If no valid pools are available: set allocations = [] and explain why in reasoning_trace.
-    - Return only one valid JSON object. No extra text, code fences, or explanations.
-"""
-)
+# Constraints:
+#     - The sum of all weight_pct must equal 100 (±1e-6). If not, normalize and add a note in reasoning_trace.
+#     - Include only pools with verified=true.
+#     - If no valid pools are available: set allocations = [] and explain why in reasoning_trace.
+#     - Return only one valid JSON object. No extra text, code fences, or explanations.
+# """
+# )
 
 # REASONING_TRACE_PROMPT = (
 #     COMMON_LOOP

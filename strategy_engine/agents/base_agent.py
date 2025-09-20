@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 import urllib.parse
 
 from agents.model import get_llm_model
@@ -14,7 +15,7 @@ from langchain.tools import BaseTool, StructuredTool
 from langchain_core.tools.base import BaseTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from pydantic import BaseModel, Field
-from utils.helpers import get_tools_description
+from utils.helpers import get_tools_description, json_to_key_value_str
 
 set_verbose(True)
 
@@ -73,7 +74,8 @@ class BaseAgent:
             tools=combined_tools,
             verbose=True,
             handle_parsing_errors=True,
-            max_iterations=300,
+            max_iterations=10,
+            return_intermediate_steps=True,
         )
 
     async def run_loop(self):
@@ -141,6 +143,64 @@ class BaseAgent:
             coral_tools = [
                 wait_fixed if t.name == "wait_for_mentions" else t for t in coral_tools
             ]
+
+        if "send_message" in _tools_by_name:
+            _send_real = _tools_by_name["send_message"]
+
+            class _SendArgs(BaseModel):
+                threadId: str | None = Field(description="Thread ID (REQUIRED)")
+                content: str = Field(
+                    default="", description="Content to send (REQUIRED)"
+                )
+                mentions: list[str] = Field(
+                    default=[], description="List of agent IDs to mention (REQUIRED)"
+                )
+
+            async def _send_wrapper(
+                threadId: str, content: str = "", mentions: list[str] = []
+            ):
+                if content == "answer":
+                    return "Tool call is error, please retry with valid content."
+                args = {}
+                args["threadId"] = threadId
+                args["content"] = content
+                args["mentions"] = mentions
+
+                timestamp = int(asyncio.get_event_loop().time() * 1000)
+                status = re.search(r'"status"\s*:\s*"([^"]+)"', content)
+                if status:
+                    status = status.group(1).replace('"status": ', "")
+
+                try:
+                    content = json_to_key_value_str(content)
+                except Exception:
+                    pass
+
+                mongo_client = MongoDB()
+                _ = await mongo_client.insert_agent_messages([
+                    AgentMessages(
+                        role=self.agent_params.agentId.upper(),
+                        content=content,
+                        timestamp=timestamp,
+                        thread_id=threadId,
+                        message_id="agent-" + str(timestamp),
+                        status=status if status else "DRAFT",
+                    )
+                ])
+                return await _send_real.ainvoke(args)
+
+            send_fixed = StructuredTool.from_function(
+                coroutine=_send_wrapper,
+                name="send_message",  # GIỮ NGUYÊN TÊN để LLM vẫn gọi đúng
+                description="Send a message; 'threadId', 'content' and 'mentions' MUST be provided.",
+                args_schema=_SendArgs,
+            )
+
+            # Thay tool gốc bằng wrapper
+            coral_tools = [
+                send_fixed if t.name == "send_message" else t for t in coral_tools
+            ]
+
         agent_tools: list[BaseTool] = []  # You can add your custom tools here
 
         for server_name in mcp_connections.keys():
@@ -159,9 +219,9 @@ class BaseAgent:
                 output = await agent_executor.ainvoke({"agent_scratchpad": []})
                 reasoning_trace = ResultProcessor().build_reasoning_trace(
                     agent_payload=output.get("output", ""),
-                    include_tool_calls=True,
+                    include_tool_calls=False,
                 )
-
+                logger.info(output.get("output", ""))
                 mongo_client = MongoDB()
                 _ = await mongo_client.insert_agent_messages([
                     AgentMessages(

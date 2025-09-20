@@ -10,7 +10,7 @@ from database.models import (
     PoolSnapshot,
     PoolSnapshotMinimal,
 )
-from pymongo import DESCENDING, AsyncMongoClient
+from pymongo import ASCENDING, DESCENDING, AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 from utils.singleton_base import SingletonBase
 
@@ -74,13 +74,25 @@ class MongoDB(SingletonBase):
                 apyPct7D=r.apyPct7D,
                 apyPct30D=r.apyPct30D,
                 tvlUsd=r.tvlUsd,
+                apy=r.apy,
             )
             for r in results
             if r is not None
+            and r.apy is not None
+            and r.apy > 0
+            and r.tvlUsd is not None
+            and r.tvlUsd > 20_000
         ]
 
     async def insert_agent_messages(self, messages: list[AgentMessages]) -> None:
         await AgentMessages.insert_many(messages)
+
+    async def get_reasoning_trace(self, thread_id: str) -> list[AgentMessages]:
+        return (
+            await AgentMessages.find(AgentMessages.thread_id == thread_id)
+            .sort((AgentMessages.timestamp, ASCENDING))
+            .to_list()
+        )
 
 
 async def main():

@@ -6,7 +6,6 @@ from typing import Any, Literal
 
 # App-specific deps
 from agents.models import AgentMessage, AgentStatus, FinalStrategy, Strategy, TraceItem
-from database.models import AgentMessages
 from database.mongodb import MongoDB
 from utils.helpers import extract_json_blocks, json_to_key_value_str
 
@@ -30,30 +29,22 @@ class ResultProcessor:
 
         strategy_str = json.dumps(parsed.get("strategy", ""), ensure_ascii=False)
         strategy = Strategy.model_validate_json(strategy_str)
-        reasoning_trace = [
-            AgentMessage(role=i.role, content=i.content, status=i.status)
-            for i in parsed_reasoning_trace
-            if i.role in ("planner", "critic", "verifier") and i.status is not None
-        ]
+        thread_ids = [item.thread_id for item in parsed_reasoning_trace]
+        thread_id = set(thread_ids).pop() if thread_ids else None
 
-        mongo_client = MongoDB()
-        _ = await mongo_client.insert_agent_messages([
-            AgentMessages(
-                role=m.role,
-                content=m.content,
-                timestamp=m.timestamp_ms,
-                thread_id=m.thread_id,
-                message_id=m.message_id,
-                status=m.status.value,
-            )
-            for m in parsed_reasoning_trace
-            if (
-                m.timestamp_ms is not None
-                and m.thread_id is not None
-                and m.message_id is not None
-                and m.status is not None
-            )
-        ])
+        if not thread_id:
+            reasoning_trace = []
+        else:
+            mongo = MongoDB()
+            messages = await mongo.get_reasoning_trace(thread_id)
+            reasoning_trace = [
+                AgentMessage(
+                    role=msg.role.lower(),
+                    content=msg.content,
+                    status=msg.status.value,
+                )
+                for msg in messages
+            ]
 
         return FinalStrategy(strategy=strategy, reasoning_trace=reasoning_trace)
 
@@ -110,7 +101,7 @@ class ResultProcessor:
         return "system"  # fallback
 
     def build_reasoning_trace(
-        self, agent_payload: dict, include_tool_calls: bool = True
+        self, agent_payload: dict, include_tool_calls: bool = False
     ) -> list[TraceItem]:
         """
         - Iterate through intermediate_steps ([(ToolAgentAction, observation), ...]).
@@ -126,7 +117,7 @@ class ResultProcessor:
                 continue
             logger.debug(f"This is a step: {step}")
 
-            tool_act, observation = step[0], step[1]
+            tool_act, observation = step[0], str(step)
             if include_tool_calls:
                 try:
                     tool_name = getattr(tool_act, "tool", None)

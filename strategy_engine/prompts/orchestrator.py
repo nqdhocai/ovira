@@ -22,7 +22,7 @@ Produce a single **Final JSON Strategy**:
 ### WORKFLOW
 
 1. `list_agents` → get agents.
-2. `create_thread` → extract `threadId`. Add participants if needed.
+2. `create_thread` → extract `threadId`. Always include all agents.
 3. `send_message` + `wait_for_mentions(60000)`:
    * ALWAYS mention agents.
    * First send pools + policy to **planner** to reasoning first strategy.
@@ -34,9 +34,9 @@ Produce a single **Final JSON Strategy**:
 ### RULES
 
 * Always demand **JSON-only** output with explicit schema from agents.
-* Follow strict order: Planner → Critic → Verifier.
-* If **Critic** return "APPROVED", skip Verifier.
-* Collect up to 5 responses per wait.
+* Follow MUST strict order: Planner → Verifier → Critic.
+* If **Critic** return "APPROVED", return the final result.
+* Collect messages from all agents per wait.
 * Output must strictly match schema.
 ---
 

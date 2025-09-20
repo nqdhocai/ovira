@@ -7,18 +7,12 @@ from utils.models import RiskLabel
 
 class AgentStatus(Enum):
     # planner status
-    FINAL = "FINAL"
     DRAFT = "DRAFT"
     FIXED = "FIXED"
 
-    # critic status
-    APPROVED = "APPROVED"
-    REJECTED = "REJECTED"
-    NEEDS_CHANGES = "NEEDS_CHANGES"
-
     # verifier status
-    VERIFIED = "VERIFIED"
-    V_REJECTED = "REJECTED"
+    APPROVED = "APPROVED"
+    NEEDS_CHANGES = "NEEDS_CHANGES"
 
 
 class AllocationItem(BaseModel):

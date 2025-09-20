@@ -28,7 +28,6 @@ def json_to_key_value_str(json_str: str, indent: int = 2) -> str:
         elif isinstance(value, list):
             lines = []
             for idx, item in enumerate(value, start=1):
-                lines.append(f"{prefix}- ITEM {idx}:")
                 lines.append(format_value(item, level + 1))
             return "\n".join(lines)
         else:

@@ -102,6 +102,32 @@ class ToolsManager:
             args_schema=WaitArgs,
         )
 
+    @staticmethod
+    def _create_send_tool_wrapper(send_real):
+        class SendArgs(BaseModel):
+            threadId: str = Field(description="Thread ID (REQUIRED)")
+            content: str = Field(description="Message content (REQUIRED)")
+            mentions: list[str] | None = Field(
+                default=None, description="List of agent IDs to mention (REQUIRED)"
+            )
+
+        async def send_wrapper(
+            threadId: str, content: str, mentions: list[str] | None = None
+        ):
+            args: dict[str, Any] = {
+                "threadId": threadId,
+                "content": content,
+                "mentions": mentions or [],
+            }
+            return await send_real.ainvoke(args)
+
+        return StructuredTool.from_function(
+            coroutine=send_wrapper,
+            name="send_message",
+            description="Send a message to a thread; 'threadId', 'mentions' and 'content' are REQUIRED.",
+            args_schema=SendArgs,
+        )
+
 
 # =========================
 # Prompt
@@ -200,7 +226,7 @@ class OrchestratorAgent(SingletonBase):
             tools=prepared_tools,
             verbose=True,
             return_intermediate_steps=True,
-            max_iterations=300,
+            max_iterations=10,
         )
 
     async def execute_strategy(

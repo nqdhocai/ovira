@@ -15,7 +15,6 @@ class AgentStatus(Enum):
 
     # critic status
     APPROVED = "APPROVED"
-    REJECTED = "REJECTED"
     NEEDS_CHANGES = "NEEDS_CHANGES"
 
     # verifier status
@@ -77,6 +76,7 @@ class PoolSnapshotMinimal(BaseModel):
     apyPct7D: float | None = None
     apyPct30D: float | None = None
     tvlUsd: float | None = None
+    apy: float | None = None  # latest apy
 
 
 class PoolSnapshot(Document):
@@ -94,6 +94,7 @@ class PoolSnapshot(Document):
     apyPct7D: float | None = None
     apyPct30D: float | None = None
     tvlUsd: float | None = None
+    apy: float | None = None  # latest apy
 
     @model_validator(mode="after")
     def compute_from_charts(
@@ -178,6 +179,7 @@ class PoolSnapshot(Document):
 
         # 3) Calculate percentage change based on time points
         latest_apy = apys[-1]
+        self.apy = latest_apy
         apy_1d_ago = value_at(now - timedelta(days=1), apys)
         apy_7d_ago = value_at(now - timedelta(days=7), apys)
         apy_30d_ago = value_at(now - timedelta(days=30), apys)
