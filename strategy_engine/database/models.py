@@ -1,9 +1,40 @@
 import bisect
 from datetime import datetime, timedelta, timezone
-from uuid import UUID
+from enum import Enum
+from uuid import UUID, uuid4
 
 from beanie import Document
 from pydantic import BaseModel, Field, model_validator
+
+
+class AgentStatus(Enum):
+    # planner status
+    FINAL = "FINAL"
+    DRAFT = "DRAFT"
+    FIXED = "FIXED"
+
+    # critic status
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    NEEDS_CHANGES = "NEEDS_CHANGES"
+
+    # verifier status
+    VERIFIED = "VERIFIED"
+    V_REJECTED = "REJECTED"
+
+
+class AgentMessages(Document):
+    id: UUID = Field(default_factory=uuid4, alias="_id")
+    thread_id: str
+    message_id: str
+    role: str
+    content: str
+    timestamp: int
+    status: AgentStatus
+
+    class Settings:
+        name = "agent_messages"
+        validate_on_save = True
 
 
 class PoolsMetdadata(Document):

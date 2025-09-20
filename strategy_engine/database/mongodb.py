@@ -4,7 +4,12 @@ from typing import Any
 from api.models import SupportedTokens
 from beanie import init_beanie
 from config.settings import databases_config
-from database.models import PoolsMetdadata, PoolSnapshot, PoolSnapshotMinimal
+from database.models import (
+    AgentMessages,
+    PoolsMetdadata,
+    PoolSnapshot,
+    PoolSnapshotMinimal,
+)
 from pymongo import DESCENDING, AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 from utils.singleton_base import SingletonBase
@@ -19,7 +24,8 @@ class MongoDB(SingletonBase):
 
     async def init(self):
         await init_beanie(
-            database=self.db, document_models=[PoolSnapshot, PoolsMetdadata]
+            database=self.db,
+            document_models=[PoolSnapshot, PoolsMetdadata, AgentMessages],
         )
 
     async def get_all_pools(self) -> list[PoolSnapshot]:
@@ -73,13 +79,16 @@ class MongoDB(SingletonBase):
             if r is not None
         ]
 
+    async def insert_agent_messages(self, messages: list[AgentMessages]) -> None:
+        await AgentMessages.insert_many(messages)
+
 
 async def main():
     import json
 
     mongo = MongoDB()
     await mongo.init()
-    pool = await mongo.get_latest_pools_by_symbol("USDC")
+    pool = await mongo.get_latest_pools_by_symbol("USDT")
     print(f"Total pools: {len(pool)}")
 
     with open("pools.json", "w") as f:

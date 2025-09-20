@@ -5,6 +5,22 @@ from pydantic import BaseModel
 from utils.models import RiskLabel
 
 
+class AgentStatus(Enum):
+    # planner status
+    FINAL = "FINAL"
+    DRAFT = "DRAFT"
+    FIXED = "FIXED"
+
+    # critic status
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    NEEDS_CHANGES = "NEEDS_CHANGES"
+
+    # verifier status
+    VERIFIED = "VERIFIED"
+    V_REJECTED = "REJECTED"
+
+
 class AllocationItem(BaseModel):
     pool_name: str
     weight_pct: float
@@ -13,6 +29,7 @@ class AllocationItem(BaseModel):
 class AgentMessage(BaseModel):
     role: Literal["planner", "critic", "verifier"]
     content: str
+    status: AgentStatus
 
 
 class Strategy(BaseModel):
@@ -34,10 +51,10 @@ class TraceItem(BaseModel):
     role: Literal["planner", "verifier", "critic", "orchestrator", "system", "tool"]
     content: str
     raw: str
-    status: str | None
+    status: AgentStatus | None
     thread_id: str | None
     message_id: str | None
-    timestamp_ms: str | None
+    timestamp_ms: int | None
     tool_name: str | None
     tool_input: str | None
     tool_output: str | None

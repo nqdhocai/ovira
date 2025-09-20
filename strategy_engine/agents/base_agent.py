@@ -3,7 +3,10 @@ import logging
 import urllib.parse
 
 from agents.model import get_llm_model
+from agents.result_processor import ResultProcessor
 from config.settings import mcp_config
+from database.models import AgentMessages
+from database.mongodb import MongoDB
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.globals import set_verbose
 from langchain.prompts import ChatPromptTemplate
@@ -153,7 +156,30 @@ class BaseAgent:
         while True:
             try:
                 logger.info("Starting new agent invocation")
-                _ = await agent_executor.ainvoke({"agent_scratchpad": []})
+                output = await agent_executor.ainvoke({"agent_scratchpad": []})
+                reasoning_trace = ResultProcessor().build_reasoning_trace(
+                    agent_payload=output.get("output", ""),
+                    include_tool_calls=True,
+                )
+
+                mongo_client = MongoDB()
+                _ = await mongo_client.insert_agent_messages([
+                    AgentMessages(
+                        role=m.role,
+                        content=m.content,
+                        timestamp=m.timestamp_ms,
+                        thread_id=m.thread_id,
+                        message_id=m.message_id,
+                        status=m.status.value,
+                    )
+                    for m in reasoning_trace
+                    if (
+                        m.timestamp_ms is not None
+                        and m.thread_id is not None
+                        and m.message_id is not None
+                        and m.status is not None
+                    )
+                ])
                 logger.info("Completed agent invocation, restarting loop")
                 await asyncio.sleep(1)
             except Exception as e:

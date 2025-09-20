@@ -89,7 +89,7 @@ VERIFIER_PROMPT = (
     COMMON_LOOP
     + """
 ROLE=Verifier (Schema+Policy+Trace).  
-Task: just validate PlanCandidate then point out what is not reasonable; needs to be edited; then send it to Critic.
+Task: wait for mention from other agents and just validate PlanCandidate then point out what is not reasonable; needs to be edited; then send it to Critic.
 Output:
 - status: VERIFIED|REJECTED
 - violations: code, detail, location  
@@ -99,6 +99,7 @@ Output:
 Constraints:  
 - If status=REJECTED → must list violations.  
 - If normalized (e.g., weights) → note in plan.  
+- MUST use "send_message" to send it to Critic.
 """
 )
 

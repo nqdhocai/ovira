@@ -1,13 +1,8 @@
 from enum import Enum
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel
 from utils.models import RiskLabel
-
-
-class APIResponse(BaseModel):
-    status: Literal["success", "error"]
-    error: str | None
 
 
 class GlobalStrategyRequest(BaseModel):

@@ -8,6 +8,7 @@ from api.errors import BadAIResponse
 from api.models import SupportedTokens
 from database.mongodb import MongoDB
 from fastapi import FastAPI, HTTPException
+from starlette.status import HTTP_200_OK
 from utils.models import RiskLabel
 
 API_PREFIX = "/api/v1"
@@ -58,7 +59,7 @@ async def mongo_test():
         raise HTTPException(status_code=500, detail="MongoDB connection failed")
 
 
-@app.get("/vault/rebalance", response_model=FinalStrategy)
+@app.get("/vault/rebalance", status_code=HTTP_200_OK, response_model=FinalStrategy)
 async def get_vault_data(
     token: SupportedTokens, risk_label: RiskLabel, policy: str | None = None
 ) -> FinalStrategy:

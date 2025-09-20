@@ -1,27 +1,24 @@
 from __future__ import annotations
 
-import html
 import json
 import logging
-import re
 import urllib.parse
 from dataclasses import dataclass
 from typing import Any, Literal
 
+# App-specific deps
+from agents.model import get_llm_model
+from agents.models import FinalStrategy
+from agents.result_processor import ResultProcessor
+from config.settings import mcp_config
 from dotenv import load_dotenv
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.prompts import ChatPromptTemplate
 from langchain.tools import StructuredTool
 from langchain_core.prompts import MessagesPlaceholder
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from pydantic import BaseModel, Field
-
-# App-specific deps
-from agents.model import get_llm_model
-from agents.models import AgentMessage, FinalStrategy, Strategy, TraceItem
-from config.settings import mcp_config
 from prompts.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
-from utils.helpers import extract_json_blocks, json_to_key_value_str
+from pydantic import BaseModel, Field
 from utils.singleton_base import SingletonBase
 
 logging.basicConfig(
@@ -120,13 +117,11 @@ class PromptBuilder:
             coral_tools_description=coral_tools_description,
         )
         system_text = PromptBuilder._escape_curly(system_text_raw)
-        return ChatPromptTemplate.from_messages(
-            [
-                ("system", system_text),
-                ("human", "{user_input}"),
-                MessagesPlaceholder(variable_name="agent_scratchpad"),
-            ]
-        )
+        return ChatPromptTemplate.from_messages([
+            ("system", system_text),
+            ("human", "{user_input}"),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ])
 
 
 # =========================
@@ -147,199 +142,6 @@ class PolicyBuilder:
                 "n_pools_max": 6,
             },
         }
-
-
-# =========================
-# Result handling
-# =========================
-class ResultProcessor:
-    def process_result(self, result: dict[str, Any]) -> FinalStrategy:
-        output = result.get("output", "")
-        parsed_reasoning_trace: list[TraceItem] = self.build_reasoning_trace(
-            result, include_tool_calls=False
-        )
-        try:
-            parsed = json.loads(output)
-
-        except Exception:
-            parsed = extract_json_blocks(output)[0]
-
-        strategy_str = json.dumps(parsed.get("strategy", ""), ensure_ascii=False)
-        strategy = Strategy.model_validate_json(strategy_str)
-        reasoning_trace = [
-            AgentMessage(role=i.role, content=i.content)
-            for i in parsed_reasoning_trace
-            if i.role in ("planner", "critic", "verifier")
-        ]
-        return FinalStrategy(strategy=strategy, reasoning_trace=reasoning_trace)
-
-    def _save_to_file(self, data: dict[str, Any]) -> None:
-        try:
-            with open("final_strategy.json", "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-        except Exception:
-            pass
-
-    def _safe_json_loads(self, s: str) -> Any:
-        try:
-            return json.loads(s)
-        except Exception:
-            return None
-
-    def _extract_resolved_blocks(self, observation_str: str) -> list[dict]:
-        RESOLVED_RE = re.compile(
-            r'<ResolvedMessage\s+id="(?P<id>[^"]+)"\s+threadName="[^"]*"\s+threadId="(?P<thread>[^"]+)"\s+senderId="(?P<sender>[^"]+)"\s+content="(?P<content>.*?)"\s+timestamp="(?P<ts>\d+)">'
-        )
-        out = []
-        for m in RESOLVED_RE.finditer(observation_str):
-            msg_id = m.group("id")
-            thread_id = m.group("thread")
-            sender = m.group("sender")
-            ts = m.group("ts")
-            content_escaped = m.group("content")
-            # content HTML-escaped → unescape
-            content_unescaped = html.unescape(content_escaped)
-            out.append(
-                {
-                    "message_id": msg_id,
-                    "thread_id": thread_id,
-                    "sender": sender,
-                    "timestamp_ms": ts,
-                    "content_unescaped": content_unescaped,
-                    "raw": m.group(0),
-                    "json_payload": self._safe_json_loads(content_unescaped),
-                }
-            )
-        return out
-
-    def _map_sender_to_role(
-        self,
-        sender: str,
-    ) -> Literal["planner", "verifier", "critic", "orchestrator", "system", "tool"]:
-        sender = sender.lower()
-        if sender == "planner":
-            return "planner"
-        if sender == "critic":
-            return "critic"
-        if sender == "verifier":
-            return "verifier"
-        if sender == "orchestrator":
-            return "orchestrator"
-        return "system"  # fallback
-
-    def build_reasoning_trace(
-        self, agent_payload: dict, include_tool_calls: bool = True
-    ) -> list[TraceItem]:
-        """
-        - Iterate through intermediate_steps ([(ToolAgentAction, observation), ...]).
-        - Extract all ResolvedMessage (planner/critic/verifier/orchestrator) with original content.
-        - Record verifier timeout if any.
-        - (Optional) Include tool-calls logs (tool, input, raw output) in trace.
-        """
-        trace: list[TraceItem] = []
-        steps = agent_payload.get("intermediate_steps", [])
-        logger.info(f"These are the steps: {steps}")
-        verifier_timeout_seen = False
-
-        for step in steps:
-            if not (isinstance(step, (list, tuple)) and len(step) >= 2):
-                continue
-            logger.debug(f"This is a step: {step}")
-
-            tool_act, observation = step[0], step[1]
-            if include_tool_calls:
-                try:
-                    tool_name = getattr(tool_act, "tool", None)
-                    tool_input = getattr(tool_act, "tool_input", None)
-
-                    tool_output = observation if isinstance(observation, str) else None
-                    trace.append(
-                        TraceItem(
-                            role="tool",
-                            tool_name=tool_name,
-                            status=None,
-                            tool_input=tool_input,
-                            tool_output=tool_output,
-                            content=f"[TOOL CALL] {tool_name} input={tool_input}",
-                            raw=str(observation)[:20000],
-                            thread_id=None,
-                            message_id=None,
-                            timestamp_ms=None,
-                        )
-                    )
-                except Exception:
-                    pass
-
-            if isinstance(observation, str):
-                for msg in self._extract_resolved_blocks(observation):
-                    logger.debug(f"Message: {msg}")
-                    role = self._map_sender_to_role(msg["sender"])
-                    content_raw = msg["content_unescaped"]
-                    payload = msg["json_payload"]
-
-                    if payload is not None:
-                        try:
-                            content_text = json.dumps(
-                                payload, ensure_ascii=False, indent=2
-                            )
-                            content_text = json_to_key_value_str(content_text, indent=2)
-                        except Exception:
-                            content_text = content_raw
-                    else:
-                        content_text = content_raw
-
-                    try:
-                        status = (
-                            payload.get("status") if isinstance(payload, dict) else None
-                        )
-                    except Exception:
-                        status = None
-
-                    trace.append(
-                        TraceItem(
-                            role=role,
-                            content=content_text,
-                            status=status,
-                            raw=msg["raw"],
-                            thread_id=msg["thread_id"],
-                            message_id=msg["message_id"],
-                            timestamp_ms=msg["timestamp_ms"],
-                            tool_name=None,
-                            tool_input=None,
-                            tool_output=None,
-                        )
-                    )
-
-        if "output" in agent_payload:
-            content = agent_payload["output"]
-            logger.debug(f"This is the content: {content}")
-            try:
-                json_blocks = extract_json_blocks(content)
-                if json_blocks:
-                    content = json_to_key_value_str(
-                        json.dumps(json_blocks[0], ensure_ascii=False, indent=2),
-                        indent=2,
-                    )
-            except Exception:
-                pass
-
-            trace.append(
-                TraceItem(
-                    role="orchestrator",
-                    content=content,
-                    status=None,
-                    raw="",
-                    thread_id=None,
-                    message_id=None,
-                    timestamp_ms=None,
-                    tool_name=None,
-                    tool_input=None,
-                    tool_output=None,
-                )
-            )
-        logger.debug(f"Trace: {trace}")
-
-        return trace
 
 
 # =========================
@@ -411,13 +213,12 @@ class OrchestratorAgent(SingletonBase):
             raise RuntimeError("Agent not initialized. Call initialize() first.")
         user_input = self._prepare_user_input(pools_data, policy, risk)
 
-        result = await self.executor.ainvoke(
-            {
-                "user_input": user_input,
-                "agent_scratchpad": [],
-            }
-        )
-        return self.result_processor.process_result(result)
+        result = await self.executor.ainvoke({
+            "user_input": user_input,
+            "agent_scratchpad": [],
+        })
+
+        return await self.result_processor.process_result(result)
 
     def _prepare_user_input(
         self,
