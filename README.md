@@ -25,7 +25,7 @@ The project consists of two main components:
   - Agent mention system
 
 ### 2. Agent Universe
-- **Location**: `agent_universe/`
+- **Location**: `strategy_engine/`
 - **Purpose**: Collection of AI agents and orchestration system
 - **Technology**: Python-based with modern async architecture
 - **Components**:
@@ -81,29 +81,10 @@ The project consists of two main components:
    uv run -m api.api_main
    ```
 
-## 📁 Project Structure
-
-```
-ovira/
-├── README.md                 # This file
-├── start-server.sh          # Server startup script
-├── strategy_engine/          # Python agent framework
-│   ├── agents/             # Agent implementations
-|   ├── api/
-│   ├── config/             # Configuration modules
-│   ├── database/           # Data persistence layer
-│   ├── prompts/            # Agent prompts and templates
-│   └── utils/              # Utility functions
-└── coral-server/           # Kotlin MCP server
-    ├── src/                # Server source code
-    ├── examples/           # Usage examples
-    └── build.gradle.kts    # Build configuration
-```
-
 ## 🔧 Configuration
 
 ### Agent Configuration
-Edit `agent_universe/app-config.yaml` to configure:
+Edit `strategy_engine/app-config.yaml` to configure:
 - Model providers (OpenAI, Google Gemini, etc.)
 - Database connections
 - MCP server endpoints
@@ -115,7 +96,7 @@ The Coral server can be configured through environment variables and the config 
 ## 🤝 Development
 
 ### Adding New Agents
-1. Create a new agent class in `agent_universe/agents/`
+1. Create a new agent class in `strategy_engine/agents/`
 2. Extend the base agent framework
 3. Register the agent in the configuration
 4. Define agent-specific prompts and tools
