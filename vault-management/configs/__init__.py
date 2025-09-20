@@ -9,6 +9,7 @@ from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from pydantic import BaseModel
 
 from .mongo_config import MongoConfig
+from .strategy_agent_config import StrategyAgentConfig
 
 # HACK: This service needs to initialize the logging instrumentor before any logging is done.
 # Still not sure why this service has to do this.
@@ -44,6 +45,7 @@ def expand_env_vars(obj: Any) -> Any:
 
 class AppConfig(BaseModel):
     mongo: MongoConfig
+    strategy_agent: StrategyAgentConfig
 
 
 def load_config(config_path: str = "app-config.yaml") -> AppConfig:
@@ -99,3 +101,4 @@ except Exception as e:
     _config = None
 
 mongo_config = _config.mongo if _config else None
+strategy_agent_config = _config.strategy_agent if _config else None
