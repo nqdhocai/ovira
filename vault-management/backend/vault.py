@@ -177,7 +177,7 @@ class VaultOperations:
             )
             return []
         end_time = get_current_target_time()
-        start_time = end_time - timedelta(days=30)
+        start_time = end_time - timedelta(days=days)
         last_strategy_apy = strategies[-1].apy * 100
         apy_chart: list[tuple[datetime, float]] = []
         while start_time + timedelta(hours=6) <= end_time:
