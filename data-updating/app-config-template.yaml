@@ -7,5 +7,5 @@ strategy_agent:
   port: "24141"
 
 vault_management:
-  url: "131.153.239.187"
+  url: "131.153.202.197"
   port: "8124"
