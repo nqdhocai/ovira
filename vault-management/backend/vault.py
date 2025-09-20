@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
+import requests
 from beanie.operators import GTE, LTE, And
 from pydantic import BaseModel
 
@@ -9,6 +10,7 @@ from hooks.error import ResourceNotFound
 from mongo.schemas import (
     PoolAllocation,
     ReasoningTrace,
+    StrategyInfo,
     UserMetadata,
     VaultsHistory,
     VaultsMetadata,
@@ -17,6 +19,7 @@ from mongo.schemas import (
 )
 from utils import hasher
 
+from .strategy import StrategyOperations
 from .user import UserOperations
 
 logger = get_logger("vault_operations")
@@ -51,6 +54,26 @@ class VaultStrategyUpdatedInfo(BaseModel):
 
 class VaultOperations:
     @staticmethod
+    async def create_vault_strategy(
+        asset: Literal["USDT", "USDC"],
+        risk_label: Literal["conservative", "balanced", "aggressive"],
+        policy_prompt: str | None = None,
+    ) -> StrategyInfo:
+        endpoint = f"http://131.153.202.197:24141/vault/rebalance"
+        payload = {
+            "token": asset,
+            "risk_label": risk_label,
+        }
+        if policy_prompt:
+            payload["policy"] = policy_prompt
+        try:
+            response = requests.get(url=endpoint, params=payload, timeout=90)
+            return StrategyInfo.model_validate(response.json())
+        except requests.RequestException as e:
+            logger.error(f"Error creating strategy: {str(e)}")
+            raise
+
+    @staticmethod
     async def create_vault(
         vault_name: str,
         owner_wallet_address: str,
@@ -80,6 +103,18 @@ class VaultOperations:
         )
         _ = await vault.save()
         logger.info(f"Vault {vault_name} created successfully.")
+        try:
+            strategy = await VaultOperations.create_vault_strategy(
+                asset=asset, risk_label=risk_label, policy_prompt=policy_prompt
+            )
+            upload_strategy = StrategyOperations(strategy, vault_name)
+            await upload_strategy.upload_vault_data()
+            logger.info(
+                f"Initial strategy created and uploaded for vault {vault_name}."
+            )
+        except Exception as e:
+            logger.error(f"Error creating initial strategy for vault {vault_name}: {e}")
+            raise
 
     @staticmethod
     async def update_vault_policy(
