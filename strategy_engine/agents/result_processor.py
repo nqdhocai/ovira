@@ -22,10 +22,10 @@ class ResultProcessor:
             result, include_tool_calls=False
         )
         try:
-            parsed = json.loads(output)
+            parsed = extract_json_blocks(output)[0]
 
         except Exception:
-            parsed = extract_json_blocks(output)[0]
+            parsed = json.loads(output.replace("```json", "").replace("```", ""))
 
         strategy_str = json.dumps(parsed.get("strategy", ""), ensure_ascii=False)
         strategy = Strategy.model_validate_json(strategy_str)
