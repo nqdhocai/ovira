@@ -9,20 +9,20 @@ services:
       POSTGRES_PASSWORD: prefect
       POSTGRES_DB: prefect
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_ovira:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U prefect"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - prefect-network
+      - prefect-network-ovira
 
   # Redis for Prefect messaging and caching
   redis:
     image: redis:7
     volumes:
-      - redis_data:/data/redis_data/
+      - redis_data_ovira:/data/redis_data/
     ports:
       - 6379:6379
     healthcheck:
@@ -31,7 +31,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - prefect-network
+      - prefect-network-ovira
 
   prefect-migration:
     image: prefecthq/prefect:3-latest
@@ -49,7 +49,7 @@ services:
         echo 'Database migrations completed!'
       "
     networks:
-      - prefect-network
+      - prefect-network-ovira
     restart: "no"
 
   
@@ -66,11 +66,11 @@ services:
       PREFECT_REDIS_MESSAGING_HOST: redis
       PREFECT_REDIS_MESSAGING_PORT: 6379
       PREFECT_REDIS_MESSAGING_DB: 0
-    command: prefect server start --no-services
+    command: prefect server start --no-services --host 0.0.0.0
     ports:
       - "4200:4200"  
     networks:
-      - prefect-network
+      - prefect-network-ovira
     env_file:
       - .env
     healthcheck:
@@ -94,7 +94,7 @@ services:
       PREFECT_REDIS_MESSAGING_DB: 0
     command: prefect server services start
     networks:
-      - prefect-network
+      - prefect-network-ovira
 
 
 
@@ -110,7 +110,7 @@ services:
       PREFECT_API_URL: http://prefect-server:4200/api
     command: prefect worker start --pool ovira-pool
     networks:
-      - prefect-network
+      - prefect-network-ovira
 
 
 
@@ -127,14 +127,16 @@ services:
     environment:
       PREFECT_API_URL: http://prefect-server:4200/api
       PREFECT_LOGGING_SETTINGS_PATH:
+    env_file:
+      - .env
     networks:
-      - prefect-network
+      - prefect-network-ovira
     restart: unless-stopped
 
 volumes:
-  postgres_data:
-  redis_data:
+  postgres_data_ovira:
+  redis_data_ovira:
 
 networks:
-  prefect-network:
+  prefect-network-ovira:
     driver: bridge
