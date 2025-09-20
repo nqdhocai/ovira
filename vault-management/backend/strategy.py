@@ -19,9 +19,26 @@ logger = get_logger("strategy_operations")
 mongo_client = Clients.get_mongo_client()
 
 
+def fix_strategy_allocations(strategy: StrategyInfo) -> StrategyInfo:
+    """
+    Fix the allocations in the strategy to ensure they sum to 100%.
+    If they do not sum to 100%, adjust the weights proportionally.
+    """
+    total_weight = sum(
+        allocation.weight_pct for allocation in strategy.strategy.allocations
+    )
+    if total_weight == 0:
+        raise ValueError("Total weight of allocations cannot be zero.")
+    if abs(total_weight - 100.0) < 0.01:
+        return strategy  # Already sums to 100%
+    for allocation in strategy.strategy.allocations:
+        allocation.weight_pct = (allocation.weight_pct / total_weight) * 100.0
+    return strategy
+
+
 class StrategyOperations:
     def __init__(self, strategy_info: StrategyInfo, vault_name: str):
-        self.strategy_response: StrategyInfo = strategy_info
+        self.strategy_response: StrategyInfo = fix_strategy_allocations(strategy_info)
         self.vault_name: str = vault_name
 
     async def get_chosen_pool_apy(self, pool_name: str) -> float:
