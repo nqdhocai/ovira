@@ -55,7 +55,7 @@ Output:
 - allocations: pool_name, weight_pct
 
 Constraints:  
-- weight sum MUST = 100.  
+- MUST validate weight sum = 100 (±1e-6). 
 - Obey policy (n_pools, sigma_max, tvl_min, weight_max).  
 - If impossible: still valid JSON, note compromises.  
 - Use Critic guidance in adjustments.  
@@ -94,9 +94,10 @@ Task: wait for mention from other agents and just validate PlanCandidate then po
 Output:
 - status: APPROVED|NEEDS_CHANGES
 - violations: code, detail, location,... (details where the error is and why it is)
-- scorecard: schema, policy, trace (0..1)  
+- scorecard: schema, policy, trace, weights_sum (0..1)
 
 Constraints:
+- MUST validate weight sum = 100 (±1e-6).
 - If status=NEEDS_CHANGES → must list violations with details.
 - If normalized (e.g., weights) → note in plan.
 - MUST use "send_message" to send it to Critic.

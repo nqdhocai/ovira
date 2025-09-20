@@ -43,10 +43,12 @@ class BaseAgent:
         system_prompt: str,
         agent_params: CoralParams,
         mcp_server: dict[str, SSEParams] | None = None,
+        agent_tools: list[BaseTool] | None = None,
     ):
         self.system_prompt: str = system_prompt.strip()
         self.agent_params: CoralParams = agent_params
         self.mcp_server: dict[str, SSEParams] | None = mcp_server
+        self.agent_tools: list[BaseTool] | None = agent_tools
 
     async def create_agent(
         self, coral_tools: list[BaseTool], agent_tools: list[BaseTool]
@@ -160,7 +162,7 @@ class BaseAgent:
                 threadId: str, content: str = "", mentions: list[str] = []
             ):
                 if content == "answer":
-                    return "Tool call is error, please retry with valid content."
+                    return "Tool call is error, please retry with the strategy | verifier | critic | planner content."
                 args = {}
                 args["threadId"] = threadId
                 args["content"] = content
@@ -191,17 +193,16 @@ class BaseAgent:
 
             send_fixed = StructuredTool.from_function(
                 coroutine=_send_wrapper,
-                name="send_message",  # GIỮ NGUYÊN TÊN để LLM vẫn gọi đúng
+                name="send_message",
                 description="Send a message; 'threadId', 'content' and 'mentions' MUST be provided.",
                 args_schema=_SendArgs,
             )
 
-            # Thay tool gốc bằng wrapper
             coral_tools = [
                 send_fixed if t.name == "send_message" else t for t in coral_tools
             ]
 
-        agent_tools: list[BaseTool] = []  # You can add your custom tools here
+        agent_tools: list[BaseTool] = self.agent_tools or []
 
         for server_name in mcp_connections.keys():
             if server_name != "coral":

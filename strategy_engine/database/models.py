@@ -88,7 +88,7 @@ class PoolSnapshot(Document):
     predictions: Predictions
     apy_statistics: ApyStatistics
     update_at: datetime
-    pool_charts_30d: list[Chart] | None
+    pool_charts_30d: list[Chart]
 
     apyPct1D: float | None = None
     apyPct7D: float | None = None
@@ -111,7 +111,7 @@ class PoolSnapshot(Document):
         if not self.pool_charts_30d:
             return self
 
-        charts_sorted = sorted(self.pool_charts_30d, key=lambda c: c.timestamp)
+        charts_sorted = self.pool_charts_30d
         times = [
             c.timestamp
             if c.timestamp.tzinfo
@@ -187,8 +187,6 @@ class PoolSnapshot(Document):
         self.apyPct1D = pct_change(apy_1d_ago, latest_apy)
         self.apyPct7D = pct_change(apy_7d_ago, latest_apy)
         self.apyPct30D = pct_change(apy_30d_ago, latest_apy)
-
-        self.pool_charts_30d = None  # free memory
 
         return self
 

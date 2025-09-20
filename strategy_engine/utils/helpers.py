@@ -20,8 +20,9 @@ def json_to_key_value_str(json_str: str, indent: int = 2) -> str:
                 if k == "status":
                     continue
                 if isinstance(v, (dict, list)):
-                    lines.append(f"{prefix}{k.upper()}:")
+                    lines.append(f"**{prefix}{k.upper()}**:")
                     lines.append(format_value(v, level + 1))
+                    lines.append("\n")  # Add a blank line after nested structures
                 else:
                     lines.append(f"{prefix}{k.upper()}: {v}")
             return "\n".join(lines)

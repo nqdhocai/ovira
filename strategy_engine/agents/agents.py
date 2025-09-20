@@ -25,6 +25,7 @@ verifier_agent = BaseAgent(
         agentId="verifier",
         agentDescription="Verifier Agent that receives JSON PlanCandidate data from Planner, checks validity and policy compliance, then responds back to Critic with identified issues for Critic to provide improvement strategies.",
     ),
+    agent_tools=[],
 )
 
 critic_agent = BaseAgent(

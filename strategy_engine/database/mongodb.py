@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Any
 
 from api.models import SupportedTokens
@@ -14,7 +15,12 @@ from pymongo import ASCENDING, DESCENDING, AsyncMongoClient
 from pymongo.asynchronous.database import AsyncDatabase
 from utils.singleton_base import SingletonBase
 
-TVL_THRESHOLD = 50_000
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+TVL_THRESHOLD = 20000
 
 
 class MongoDB(SingletonBase):
@@ -49,7 +55,6 @@ class MongoDB(SingletonBase):
             .sort(
                 (PoolSnapshot.update_at, DESCENDING)  # pyright: ignore[reportArgumentType]
             )
-            .limit(1)
             .first_or_none()
         )
 
@@ -81,9 +86,8 @@ class MongoDB(SingletonBase):
             for r in results
             if r is not None
             and r.apy is not None
-            and r.apy > 0
             and r.tvlUsd is not None
-            and r.tvlUsd >= TVL_THRESHOLD
+            and r.tvlUsd > TVL_THRESHOLD
         ]
 
     async def insert_agent_messages(self, messages: list[AgentMessages]) -> None:
@@ -102,7 +106,8 @@ async def main():
 
     mongo = MongoDB()
     await mongo.init()
-    pool = await mongo.get_latest_pools_by_symbol("USDT")
+    pool = await mongo.get_latest_pool_by_name("USDC kamino-lend")
+    print(pool)
     print(f"Total pools: {len(pool)}")
 
     with open("pools.json", "w") as f:
