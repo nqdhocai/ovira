@@ -177,7 +177,7 @@ class VaultOperations:
             )
             return []
         end_time = get_current_target_time()
-        start_time = end_time - timedelta(days=days)
+        start_time = end_time - timedelta(days=30)
         last_strategy_apy = strategies[-1].apy * 100
         apy_chart: list[tuple[datetime, float]] = []
         while start_time + timedelta(hours=6) <= end_time:
@@ -190,18 +190,22 @@ class VaultOperations:
             #     None,
             # )
             # apy = strategy.apy if strategy else 0.0
-            apy_chart.append(
-                (
-                    start_time,
+            if start_time >= end_time - timedelta(days=7):
+                apy_chart.append(
                     (
-                        1.0
-                        * random.randint(
-                            int(last_strategy_apy * 0.95), int(last_strategy_apy * 1.05)
+                        start_time,
+                        (
+                            1.0
+                            * random.randint(
+                                int(last_strategy_apy * 0.95),
+                                int(last_strategy_apy * 1.05),
+                            )
                         )
+                        / 100.0,
                     )
-                    / 100.0,
                 )
-            )
+            else:
+                apy_chart.append((start_time, 0.0))
             start_time += timedelta(hours=6)
         apy_chart.append((start_time, last_strategy_apy / 100.0))
         return apy_chart
