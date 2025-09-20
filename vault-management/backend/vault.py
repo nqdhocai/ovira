@@ -67,7 +67,7 @@ class VaultOperations:
         if policy_prompt:
             payload["policy"] = policy_prompt
         try:
-            response = requests.get(url=endpoint, params=payload, timeout=90)
+            response = requests.get(url=endpoint, params=payload, timeout=300)
             return StrategyInfo.model_validate(response.json())
         except requests.RequestException as e:
             logger.error(f"Error creating strategy: {str(e)}")
