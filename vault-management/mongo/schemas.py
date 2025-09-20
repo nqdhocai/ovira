@@ -63,6 +63,7 @@ class PoolAllocation(BaseModel):
 class ReasoningTrace(BaseModel):
     role: str
     content: str
+    status: str
 
 
 class Strategy(BaseModel):
