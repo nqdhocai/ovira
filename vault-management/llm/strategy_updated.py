@@ -40,9 +40,9 @@ new_strategy:
 $new
 
 TASK
-Return ONLY a JSON object with this exact shape:
+Return ONLY a JSON object with this exact shape, list of action ("Rebalance"|"Add Pool"|"Remove Pool"|"Risk Profile Change"|"Rationale Update"|"No Changes"):
 {
-  "action": "Rebalance"|"Add Pool"|"Remove Pool"|"Risk Profile Change"|"Rationale Update"|"No Changes",
+  "action": "string",
   "details": "string"    
 }
 
