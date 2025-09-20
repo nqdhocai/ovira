@@ -20,7 +20,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TVL_THRESHOLD = 20000
+TVL_THRESHOLD = 100000
 
 
 class MongoDB(SingletonBase):
@@ -73,7 +73,7 @@ class MongoDB(SingletonBase):
         tasks = [self.get_latest_pool_by_name(name) for name in pool_names]
 
         results = await asyncio.gather(*tasks)
-        return [
+        filtered_results = [
             PoolSnapshotMinimal(
                 pool_name=r.pool_name,
                 apy_statistics=r.apy_statistics,
@@ -86,9 +86,14 @@ class MongoDB(SingletonBase):
             for r in results
             if r is not None
             and r.apy is not None
+            and r.apy > 0
             and r.tvlUsd is not None
             and r.tvlUsd > TVL_THRESHOLD
         ]
+
+        if len(filtered_results) > 6:
+            filtered_results = filtered_results[:6]
+        return filtered_results
 
     async def insert_agent_messages(self, messages: list[AgentMessages]) -> None:
         _ = await AgentMessages.insert_many(messages)

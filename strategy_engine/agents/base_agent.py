@@ -33,8 +33,8 @@ class CoralParams(BaseModel):
 class SSEParams(BaseModel):
     transport: str = "sse"
     url: str
-    timeout: int = 60000
-    sse_read_timeout: int = 60000
+    timeout: int = 30000
+    sse_read_timeout: int = 30000
 
 
 class BaseAgent:
@@ -121,23 +121,23 @@ class BaseAgent:
                     default=None, description="Thread ID (optional)"
                 )
                 timeoutMs: int | None = Field(
-                    default=60000, description="Timeout in ms (INTEGER)"
+                    default=30000, description="Timeout in ms (INTEGER)"
                 )
 
             async def _wait_wrapper(
-                threadId: str | None = None, timeoutMs: int | None = 60000
+                threadId: str | None = None, timeoutMs: int | None = 30000
             ):
                 args = {}
                 if threadId:
                     args["threadId"] = threadId
-                # ÉP KIỂU: nếu LLM đưa 60000.0 → int(60000.0) = 60000
-                args["timeoutMs"] = int(timeoutMs if timeoutMs is not None else 60000)
+                # ÉP KIỂU: nếu LLM đưa 30000.0 → int(30000.0) = 30000
+                args["timeoutMs"] = int(timeoutMs if timeoutMs is not None else 30000)
                 return await _wait_real.ainvoke(args)
 
             wait_fixed = StructuredTool.from_function(
                 coroutine=_wait_wrapper,
                 name="wait_for_mentions",  # GIỮ NGUYÊN TÊN để LLM vẫn gọi đúng
-                description="Wait for mentions; 'timeoutMs' MUST be integer milliseconds (e.g., 60000).",
+                description="Wait for mentions; 'timeoutMs' MUST be integer milliseconds (e.g., 30000).",
                 args_schema=_WaitArgs,
             )
 

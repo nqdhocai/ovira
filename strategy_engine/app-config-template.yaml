@@ -6,7 +6,7 @@ databases:
 mcp:
   coral_protocol:
     sse_url: http://coral-server:5555/devmode/exampleApplication/privkey/session1/sse
-    timeout_ms: 60000
+    timeout_ms: 30000
 
 agents:
   llm_model:

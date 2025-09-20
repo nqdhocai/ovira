@@ -22,8 +22,8 @@ Produce a single **Final JSON Strategy**:
 ### WORKFLOW
 
 1. `list_agents` → get agents.
-2. `create_thread` → extract `threadId`. Always include all agents. Only one thread per strategy.
-3. `send_message` + `wait_for_mentions(60000)`:
+2. `create_thread` → extract `threadId`. Always include all agents.
+3. `send_message` + `wait_for_mentions(30000)`:
    * ALWAYS mention agents.
    * First send pools + policy to **planner** to reasoning first strategy.
    * Send pools/strategy JSON to **planner, critic, verifier** to start debate to improve strategy.

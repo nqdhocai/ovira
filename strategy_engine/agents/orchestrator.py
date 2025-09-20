@@ -43,7 +43,7 @@ class Config:
         cfg = Config(
             coral_sse_url=mcp_config.CORAL_SSE_URL,
             agent_id="orchestrator",
-            timeout_ms=int(mcp_config.TIMEOUT_MS or 60000),
+            timeout_ms=int(mcp_config.TIMEOUT_MS or 30000),
         )
 
         return cfg
@@ -83,22 +83,22 @@ class ToolsManager:
                 default=None, description="Thread ID (optional)"
             )
             timeoutMs: int | None = Field(
-                default=60000, description="Timeout in ms (INTEGER)"
+                default=30000, description="Timeout in ms (INTEGER)"
             )
 
         async def wait_wrapper(
-            threadId: str | None = None, timeoutMs: int | None = 60000
+            threadId: str | None = None, timeoutMs: int | None = 30000
         ):
             args: dict[str, Any] = {}
             if threadId:
                 args["threadId"] = threadId
-            args["timeoutMs"] = int(timeoutMs if timeoutMs is not None else 60000)
+            args["timeoutMs"] = int(timeoutMs if timeoutMs is not None else 30000)
             return await wait_real.ainvoke(args)
 
         return StructuredTool.from_function(
             coroutine=wait_wrapper,
             name="wait_for_mentions",
-            description="Wait for mentions; 'timeoutMs' MUST be integer milliseconds (e.g., 60000).",
+            description="Wait for mentions; 'timeoutMs' MUST be integer milliseconds (e.g., 30000).",
             args_schema=WaitArgs,
         )
 
@@ -161,7 +161,6 @@ class PolicyBuilder:
         return {
             "risk_label": risk,
             "rules": {
-                "tvl_usd_min": 1_000_000,
                 "sigma_max": 0.20,
                 "weight_pct_per_pool_max": 50.0,
                 "n_pools_min": 2,

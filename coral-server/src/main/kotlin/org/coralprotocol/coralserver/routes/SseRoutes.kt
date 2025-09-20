@@ -64,7 +64,7 @@ private suspend fun handleSseConnection(
     val sessionId = parameters["coralSessionId"]
     val agentId = parameters["agentId"]
     val agentDescription: String = parameters["agentDescription"] ?: agentId ?: "no description"
-    val maxWaitForMentionsTimeout = parameters["maxWaitForMentionsTimeout"]?.toLongOrNull() ?: 60000
+    val maxWaitForMentionsTimeout = parameters["maxWaitForMentionsTimeout"]?.toLongOrNull() ?: 30000
 
     if (agentId == null) {
         sseProducer.call.respond(HttpStatusCode.BadRequest, "Missing agentId parameter")
@@ -146,7 +146,7 @@ private suspend fun handleSseConnection(
     val transportSessionId = transport.sessionId
     servers[transportSessionId] = individualServer
 
-    val success = session.waitForGroup(agentId, 60000)
+    val success = session.waitForGroup(agentId, 30000)
     if (success) {
         logger.info { "Agent $agentId successfully waited for group" }
     } else {
@@ -159,7 +159,7 @@ private suspend fun handleSseConnection(
         if (session.devRequiredAgentStartCount > 0) {
             if (newCount < session.devRequiredAgentStartCount) {
 
-                val success = session.waitForAgentCount(session.devRequiredAgentStartCount, 60000)
+                val success = session.waitForAgentCount(session.devRequiredAgentStartCount, 30000)
                 if (success) {
                     logger.info { "DevMode: Successfully waited for ${session.devRequiredAgentStartCount} agents to connect" }
                 } else {
