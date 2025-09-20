@@ -1,3 +1,7 @@
 mongo:
   uri: ""
   db_name: "defi_agent_db"
+
+strategy_agent:
+  url: "localhost"
+  port: "24141"

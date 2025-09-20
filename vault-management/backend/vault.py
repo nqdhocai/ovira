@@ -5,7 +5,7 @@ import requests
 from beanie.operators import GTE, LTE, And
 from pydantic import BaseModel
 
-from configs import get_logger
+from configs import get_logger, strategy_agent_config
 from hooks.error import ResourceNotFound
 from mongo.schemas import (
     PoolAllocation,
@@ -59,7 +59,7 @@ class VaultOperations:
         risk_label: Literal["conservative", "balanced", "aggressive"],
         policy_prompt: str | None = None,
     ) -> StrategyInfo:
-        endpoint = f"http://131.153.202.197:24141/vault/rebalance"
+        endpoint = f"http://{strategy_agent_config.url}:{strategy_agent_config.port}/vault/rebalance"
         payload = {
             "token": asset,
             "risk_label": risk_label,
@@ -67,7 +67,7 @@ class VaultOperations:
         if policy_prompt:
             payload["policy"] = policy_prompt
         try:
-            response = requests.get(url=endpoint, params=payload, timeout=90)
+            response = requests.get(url=endpoint, params=payload, timeout=300)
             return StrategyInfo.model_validate(response.json())
         except requests.RequestException as e:
             logger.error(f"Error creating strategy: {str(e)}")
