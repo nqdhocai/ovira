@@ -179,29 +179,32 @@ class UserOperations:
         if not user:
             raise ResourceNotFound(f"User with wallet {user_wallet} not found.")
         all_vault_names = [
-            vault.name for vault in await VaultsMetadata.find_all().to_list()
+            vault.name
+            for vault in await VaultsMetadata.find(
+                VaultsMetadata.owner.id == user.id
+            ).to_list()
         ]
         list_vault_data: list[VaultData] = []
         for vault_name in all_vault_names:
             vault = await VaultsMetadata.find_one(VaultsMetadata.name == vault_name)
             if not vault:
+                logger.warning(f"Vault {vault_name} not found, skipping...")
                 continue
             vault_strategy = (
                 await VaultsStrategy.find(
-                    And(
-                        VaultsStrategy.vault.id == vault.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
-                    )
+                    VaultsStrategy.vault.id == vault.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
                 )
                 .sort(-VaultsStrategy.update_at)  # pyright: ignore[reportOperatorIssue, reportUnknownArgumentType]
                 .first_or_none()
             )
             if not vault_strategy:
+                logger.warning(
+                    f"No strategy data found for vault {vault_name}, skipping..."
+                )
                 continue
             vault_history = (
                 await VaultsHistory.find(
-                    And(
-                        VaultsHistory.vault.id == vault.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
-                    )
+                    VaultsHistory.vault.id == vault.id,  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportAttributeAccessIssue]
                 )
                 .sort(-VaultsHistory.update_at)  # pyright: ignore[reportOperatorIssue, reportUnknownArgumentType]
                 .first_or_none()
@@ -213,14 +216,12 @@ class UserOperations:
                     rank = key
             if rank == 0:
                 continue
-            if not vault_history:
-                continue
             list_vault_data.append(
                 VaultData(
                     vault_name=vault.name,
                     rank=rank,
                     apy=vault_strategy.apy,
-                    tvl=vault_history.tvl,
+                    tvl=vault_history.tvl if vault_history else 0.0,
                 )
             )
         list_vault_data.sort(key=lambda x: x.tvl, reverse=True)
