@@ -94,7 +94,7 @@ Task: wait for mention from other agents and just validate PlanCandidate then po
 Output:
 - status: APPROVED|NEEDS_CHANGES
 - violations: code, detail, location,... (details where the error is and why it is)
-- scorecard: schema, policy, trace, weights_sum (0..1)
+- scorecard: schema, policy, trace (0..1)
 
 Constraints:
 - MUST validate weight sum = 100 (±1e-6).
