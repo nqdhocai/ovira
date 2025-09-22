@@ -77,7 +77,7 @@ class StrategyUpdating:
         vaults = await VaultsMetadata.find_all().to_list()
         tasks_failed: list[str] = []
         for vault in vaults:
-            if (datetime.utcnow() - root_time).seconds % (
+            if (update_time - root_time).seconds % (
                 vault.update_frequency * 3600
             ) > 1200:
                 continue
