@@ -4,19 +4,45 @@ import json
 import os
 from string import Template
 
-import google.generativeai as genai
+import google.genai as genai
 from dotenv import load_dotenv
+from google.genai import types
 
 from configs import get_logger
 from mongo.schemas import UpdatedInfo, VaultsStrategy
 
 _ = load_dotenv()
 logger = get_logger("strategy_changes_by_llm")
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(
+    api_key=os.environ.get("GEMINI_API_KEY"),
+)
 
-
-model = genai.GenerativeModel(
-    "gemini-2.0-flash", generation_config={"response_mime_type": "application/json"}
+generate_config = generate_content_config = types.GenerateContentConfig(
+    thinking_config=types.ThinkingConfig(
+        thinking_budget=0,
+    ),
+    response_mime_type="application/json",
+    response_schema=types.Schema(
+        type=types.Type.OBJECT,
+        required=["action", "details"],
+        properties={
+            "action": types.Schema(
+                type=types.Type.STRING,
+                enum=[
+                    "REBALANCE",
+                    "ADD POOL",
+                    "REMOVE POOL",
+                    "RISK PROFILE CHANGE",
+                    "RATIONALE UPDATE",
+                    "NO CHANGES",
+                ],
+            ),
+            "details": types.Schema(
+                type=types.Type.STRING,
+            ),
+        },
+    ),
+    temperature=0.1,
 )
 
 PROMPT_TPL = Template(
@@ -43,7 +69,7 @@ TASK
 Return ONLY a JSON object with this exact shape, list of action ("Rebalance"|"Add Pool"|"Remove Pool"|"Risk Profile Change"|"Rationale Update"|"No Changes"):
 {
   "action": "string",
-  "details": "string"    
+  "details": "string"  
 }
 
 RULES
@@ -72,7 +98,34 @@ def get_strategy_changes(
             last=json.dumps(last_strategy.strategy.model_dump(), ensure_ascii=False),
             new=json.dumps(new_strategy.strategy.model_dump(), ensure_ascii=False),
         )
-        resp = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=[
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_text(text=prompt),
+                    ],
+                ),
+            ],
+            config=generate_config,
+        )
+
+        if not response.candidates or len(response.candidates) == 0:
+            raise ValueError("No response candidates received from the model")
+
+        candidate = response.candidates[0]
+        if (
+            not candidate.content
+            or not candidate.content.parts
+            or len(candidate.content.parts) == 0
+        ):
+            raise ValueError("No content parts received from the model")
+
+        resp = candidate.content.parts[0]
+        if not hasattr(resp, "text") or not resp.text:
+            raise ValueError("No text content received from the model")
+
         data = json.loads(resp.text)
         return UpdatedInfo.model_validate(data)
     except Exception as e:

@@ -8,6 +8,7 @@ dependencies = [
   "aiohttp>=3.12.15",
   "beanie==1.29",
   "fastapi==0.115.4",
+  "google-genai>=1.38.0",
   "google-generativeai>=0.8.5",
   "httpx>=0.28.1",
   "opentelemetry-api==1.27",
